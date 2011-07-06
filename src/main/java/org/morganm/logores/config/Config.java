@@ -3,6 +3,8 @@
  */
 package org.morganm.logores.config;
 
+import java.util.List;
+
 /** Our configuration which determines how a number of things about how this mod operates.
  * Intended to be used with ConfigOptions class for setting nodes as String keys.
  * 
@@ -68,4 +70,18 @@ public interface Config {
      * @return int or default
      */
     public int getInt(String path, int def);
+
+    /**
+     * Gets a list of strings. Non-valid entries will not be in the list.
+     * There will be no null slots. If the list is not defined, the
+     * default will be returned. 'null' can be passed for the default
+     * and an empty list will be returned instead. If an item in the list
+     * is not a string, it will be converted to a string. The node must be
+     * an actual list and not just a string.
+     *
+     * @param path path to node (dot notation)
+     * @param def default value or null for an empty list as default
+     * @return list of strings
+     */
+    public List<String> getStringList(String path, List<String> def);
 }

@@ -6,23 +6,21 @@ package org.morganm.logores;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 
-import org.bukkit.block.BlockState;
-
 /** Object which manages the queue for the logger.
  * 
  * @author morganm
  *
  */
 public class LogQueue {
-	private static final int QUEUE_CAPACITY = 1000;
+	private static final int QUEUE_CAPACITY = 10000;
 	
-	private BlockingQueue<BlockState> logQueue;
+	private BlockingQueue<LogEvent> logQueue;
 	
 	public LogQueue() {
-		logQueue = new ArrayBlockingQueue<BlockState>(QUEUE_CAPACITY);
+		logQueue = new ArrayBlockingQueue<LogEvent>(QUEUE_CAPACITY);
 	}
 	
-	public void push(BlockState bs) {
+	public void push(LogEvent bs) {
 		logQueue.add(bs);
 	}
 	
@@ -35,7 +33,7 @@ public class LogQueue {
 	 * @return
 	 * @throws InterruptedException
 	 */
-	public BlockState pop() throws InterruptedException {
+	public LogEvent pop() throws InterruptedException {
 		return logQueue.take();
 	}
 	

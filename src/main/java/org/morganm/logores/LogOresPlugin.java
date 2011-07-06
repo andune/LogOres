@@ -9,11 +9,14 @@ import java.util.logging.Logger;
 
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
+import org.bukkit.event.Event;
+import org.bukkit.event.Event.Priority;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.morganm.logores.config.Config;
 import org.morganm.logores.config.ConfigException;
 import org.morganm.logores.config.ConfigFactory;
 import org.morganm.logores.config.JavaConfigPlugin;
+import org.morganm.logores.config.LogOresConfig;
 
 /**
  * @author morganm
@@ -25,11 +28,22 @@ public class LogOresPlugin extends JavaPlugin implements JavaConfigPlugin {
 	private String logPrefix;
 	private String pluginName;
 	private Config config;
+	private LogOresConfig logOresConfig;
 	private LogQueue logQueue;
+	private LogOresBlockListener blockListener;
 	
 	public void loadConfig() throws ConfigException, IOException {
 		config = ConfigFactory.getInstance(ConfigFactory.Type.YAML, this, "plugins/"+pluginName+"/config.yml");
 		config.load();
+		
+		logOresConfig = new LogOresConfig(this);
+		logOresConfig.processConfig();
+		
+		blockListener.reloadConfig();
+	}
+	
+	public void shutdownPlugin() {
+		getServer().getPluginManager().disablePlugin(this);		
 	}
 	
 	@Override
@@ -38,6 +52,9 @@ public class LogOresPlugin extends JavaPlugin implements JavaConfigPlugin {
 		
     	pluginName = getDescription().getName();
     	logPrefix = "[" + pluginName + "]";
+    	
+		logQueue = new LogQueue();
+    	blockListener = new LogOresBlockListener(this);
     	
     	try {
     		loadConfig();
@@ -50,11 +67,11 @@ public class LogOresPlugin extends JavaPlugin implements JavaConfigPlugin {
     	
     	if( loadError ) {
     		log.severe("Error detected when loading plugin "+ pluginName +", plugin shutting down.");
-    		getServer().getPluginManager().disablePlugin(this);
+    		shutdownPlugin();
     		return;
     	}
     	
-		logQueue = new LogQueue();
+        getServer().getPluginManager().registerEvent(Event.Type.BLOCK_BREAK, blockListener, Priority.Monitor, this);
 		
         log.info( logPrefix + " version [" + getDescription().getVersion() + "] loaded" );
 	}
@@ -67,9 +84,9 @@ public class LogOresPlugin extends JavaPlugin implements JavaConfigPlugin {
 	@Override
 	public boolean onCommand(CommandSender sender, Command command, String label, String[] args)
 	{
-		if( command.equals("lop") ) {
+		if( command.equals("lo") ) {
 			if( args.length < 1 ) {
-				sendMessage(sender, "Usage:\nlop reload - reload config file\n");
+				sendMessage(sender, "Usage:\nlo reload - reload config file\n");
 			}
 			else if( args[0].equals("reload") || args[0].equals("rc") ) {	// reload config
 				try {
@@ -96,6 +113,7 @@ public class LogOresPlugin extends JavaPlugin implements JavaConfigPlugin {
 	}
 	
 	public Config getConfig() { return config; }
+	public LogOresConfig getLogOresConfig() { return logOresConfig; }
 	public LogQueue getLogQueue() { return logQueue; }
 	
 	public File getJarFile() {

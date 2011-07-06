@@ -1,0 +1,9 @@
+name: LogOres
+main: org.morganm.logores.LogOresPlugin
+version: 0.1
+author: morganm
+database: false
+commands:
+  lo:
+    description: Log ores admin functions
+    usage: /<command>

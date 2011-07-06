@@ -13,19 +13,32 @@ import org.bukkit.event.block.BlockListener;
 public class LogOresBlockListener extends BlockListener {
 	private LogOresPlugin plugin;
 	private LogQueue logQueue;
+	private int[] logOres;
 	
 	public LogOresBlockListener(LogOresPlugin plugin) {
 		this.plugin = plugin;
 		this.logQueue = plugin.getLogQueue();
+		reloadConfig();
 	}
 	
 	public void onBlockBreak(BlockBreakEvent event) {
 		if (event.isCancelled())
 			return;
 		
-		// if this is an ore we should log
-		if( true ) {
-			logQueue.push(event.getBlock().getState());
+		int blockType = event.getBlock().getTypeId();
+		
+		event.getBlock().getType();
+		
+		// check to see if this is an ore we should log
+		for(int i=0; i < logOres.length; i++) {
+			if( blockType == logOres[i] ) {
+				logQueue.push(new LogEvent(event.getPlayer().getName(), event.getBlock().getState()));
+				break;
+			}
 		}
+	}
+	
+	public void reloadConfig() {
+		this.logOres = plugin.getLogOresConfig().getLogIds();
 	}
 }
