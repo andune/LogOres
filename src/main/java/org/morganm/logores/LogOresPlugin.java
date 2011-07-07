@@ -31,6 +31,7 @@ public class LogOresPlugin extends JavaPlugin implements JavaConfigPlugin {
 	private LogOresConfig logOresConfig;
 	private LogQueue logQueue;
 	private LogOresBlockListener blockListener;
+	private LogOreLogger oreLogger;
 	
 	public void loadConfig() throws ConfigException, IOException {
 		config = ConfigFactory.getInstance(ConfigFactory.Type.YAML, this, "plugins/"+pluginName+"/config.yml");
@@ -72,12 +73,19 @@ public class LogOresPlugin extends JavaPlugin implements JavaConfigPlugin {
     	}
     	
         getServer().getPluginManager().registerEvent(Event.Type.BLOCK_BREAK, blockListener, Priority.Monitor, this);
+        
+        oreLogger = new LogOreLogger(this);
+        getServer().getScheduler().scheduleAsyncDelayedTask(this, oreLogger);
 		
         log.info( logPrefix + " version [" + getDescription().getVersion() + "] loaded" );
 	}
 
 	@Override
 	public void onDisable() {
+		try {
+			oreLogger.close();
+		} catch(IOException e) { e.printStackTrace(); }
+		
         log.info( logPrefix + " version [" + getDescription().getVersion() + "] unloaded" );
 	}
 	

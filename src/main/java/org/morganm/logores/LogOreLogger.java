@@ -3,6 +3,7 @@
  */
 package org.morganm.logores;
 
+import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.Date;
@@ -31,18 +32,31 @@ public class LogOreLogger implements Runnable {
 		this.logPrefix = plugin.getLogPrefix();
 	}
 	
+	/**
+	 * 
+	 * @return true if logfile opened OK, false on error
+	 */
 	private boolean openLogFile() {
-		boolean error = false;
+		boolean error = true;
 		
 		try {
-			writer = new FileWriter("plugin/LogOres/oreLog.txt");
+			// TODO: move to config setting
+			File file = new File("plugins/LogOres/oreLog.txt");
+			if( !file.exists() )
+				file.createNewFile();
+			writer = new FileWriter(file, true);		// append
+			error = false;
 		}
 		catch(Exception e) {
-			error = true;
 			e.printStackTrace();
 		}
 		
-		return error;
+		return !error;
+	}
+	
+	public void close() throws IOException {
+		if( writer != null )
+			writer.close();
 	}
 	
 	/** Write a given block out to the logfile.
@@ -54,20 +68,25 @@ public class LogOreLogger implements Runnable {
 		sb.append("[");
 		sb.append(new Date().toString());
 		sb.append("] ");
-		sb.append(event.bs.getData().toString());
+		sb.append(event.bs.getData().getItemType().toString());
 		sb.append(" broken by ");
 		sb.append(event.playerName);
 		sb.append(" at (x=");
 		sb.append(event.bs.getX());
-		sb.append(",y=");
+		sb.append(", y=");
 		sb.append(event.bs.getY());
-		sb.append(",z=");
+		sb.append(", z=");
 		sb.append(event.bs.getZ());
-		sb.append(",world=");
+		sb.append(", world=");
 		sb.append(event.bs.getWorld().getName());
-		sb.append(")");
+		sb.append(")\n");
 		
+		if( writer == null )
+			openLogFile();
+
+		System.out.println("Writing :"+sb.toString());
 		writer.write(sb.toString());
+		writer.flush();
 	}
 	
 	/** This method will be called once by Bukkit Scheduler.  It will try to read the Queue
@@ -79,6 +98,8 @@ public class LogOreLogger implements Runnable {
 		running = true;
 		LogEvent event = null;
 
+		System.out.println("LogOreLogger running");
+		
 		if( !openLogFile() ) {
 			log.severe(logPrefix + " Error opening log file, logger shutting down!");
 			plugin.shutdownPlugin();
@@ -88,8 +109,10 @@ public class LogOreLogger implements Runnable {
 		
 		int errors = 0;
 		try {
+			System.out.println("blocking waiting for event");
 			while( errors < MAX_ERRORS && (event = queue.pop()) != null ) {
 				try {
+					System.out.println("got event");
 					logBlock(event);
 				} catch(IOException e) {
 					log.warning(logPrefix + " Error writing to log file");
