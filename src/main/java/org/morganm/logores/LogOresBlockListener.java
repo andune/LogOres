@@ -30,7 +30,7 @@ public class LogOresBlockListener extends BlockListener {
 		for(int i=0; i < logOres.length; i++) {
 //			System.out.println("Checking blockType "+blockType+" against "+logOres[i]);
 			if( blockType == logOres[i] ) {
-				logQueue.push(new LogEvent(event.getPlayer().getName(), event.getBlock().getState()));
+				logQueue.push(new LogEvent(event.getPlayer().getName(), event.getBlock().getState(), System.currentTimeMillis()));
 				break;
 			}
 		}

@@ -134,8 +134,15 @@ public class LogOreLogger implements Runnable {
 			openLogFile();
 
 //		System.out.println("Writing :"+sb.toString());
-		writer.write(sb.toString());
-		writer.flush();
+		try {
+			writer.write(sb.toString());
+		}
+		catch(IOException e) {
+			if( e.getMessage().contains("Stream closed") ) {	// ugh terrible code based on implementation message, I know
+				openLogFile();
+				writer.write(sb.toString());
+			}
+		}
 	}
 	
 	/** This method will be called once by Bukkit Scheduler.  It will try to read the Queue
@@ -144,12 +151,16 @@ public class LogOreLogger implements Runnable {
 	 */
 	@Override
 	public void run() {
+		// never let us run in two threads at once
+		if( running ) 
+			return;
+		
 		running = true;
 		LogEvent event = null;
 
 //		System.out.println("LogOreLogger running");
 		
-		if( !openLogFile() ) {
+		if( writer == null && !openLogFile() ) {
 			log.severe(logPrefix + " Error opening log file, logger shutting down!");
 			plugin.shutdownPlugin();
 			running = false;
@@ -157,45 +168,44 @@ public class LogOreLogger implements Runnable {
 		}
 		
 		int errors = 0;
-		try {
-//			System.out.println("blocking waiting for event");
-			while( errors < MAX_ERRORS && (event = queue.pop()) != null ) {
-				try {
-//					System.out.println("got event");
-					PrevOre prevOre = lastOre.get(event.playerName);
-					
-					logBlock(event, prevOre);
-					
-					if( prevOre == null ) {
-						prevOre = new PrevOre();
-						lastOre.put(event.playerName, prevOre);
-					}
-					
-					// we save CPU by just re-using the same private class rather than creating
-					// a new object every time.
-					prevOre.bs = event.bs;
-					prevOre.time = System.currentTimeMillis();
-				} catch(IOException e) {
-					log.warning(logPrefix + " Error writing to log file");
-					e.printStackTrace();
-					errors++;
+//		System.out.println("blocking waiting for event");
+		while( errors < MAX_ERRORS && !queue.isEmpty() ) {
+			try {
+				event = queue.pop();
+//				System.out.println("got event");
+				PrevOre prevOre = lastOre.get(event.playerName);
+
+				logBlock(event, prevOre);
+
+				if( prevOre == null ) {
+					prevOre = new PrevOre();
+					lastOre.put(event.playerName, prevOre);
 				}
-				
-				// if the plugin has been shutdown and the queue is empty, time to exit
-				if( !plugin.isEnabled() && queue.isEmpty() )
-					break;
+
+				// we save CPU by just re-using the same private class rather than creating
+				// a new object every time.
+				prevOre.bs = event.bs;
+				prevOre.time = event.time;
 			}
+			catch(IOException e) {
+				log.warning(logPrefix + " Error writing to log file");
+				e.printStackTrace();
+				errors++;
+			}
+			catch(InterruptedException e) {}
+
+			// if the plugin has been shutdown and the queue is empty, time to exit
+			if( !plugin.isEnabled() && queue.isEmpty() )
+				break;
 		}
-		catch(InterruptedException e) {}
 		
 		if( errors > 10 ) {
-			log.severe(logPrefix + " LogOre logger exited after "+MAX_ERRORS+" errors");
+			log.severe(logPrefix + " LogOre logger gave up after "+MAX_ERRORS+" errors");
 		}
-	
+
 		try {
-			writer.close();
-		}
-		catch(IOException e) { e.printStackTrace(); }
+			writer.flush();
+		} catch(IOException e) { e.printStackTrace(); }
 		
 		running = false;
 	}

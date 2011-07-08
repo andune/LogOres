@@ -1,6 +1,7 @@
 v0.3 - July 7, 2011
 Changed log formatting, added distance/time/ratio
-cleaned up debug messages
+Cleaned up debug messages
+Changed log writer to run on scheduled intervals (less disk writes)
 
 v0.2 - July 6, 2011
 Several bug fixes

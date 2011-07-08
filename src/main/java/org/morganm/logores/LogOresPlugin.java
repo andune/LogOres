@@ -75,7 +75,8 @@ public class LogOresPlugin extends JavaPlugin implements JavaConfigPlugin {
         getServer().getPluginManager().registerEvent(Event.Type.BLOCK_BREAK, blockListener, Priority.Monitor, this);
         
         oreLogger = new LogOreLogger(this);
-        getServer().getScheduler().scheduleAsyncDelayedTask(this, oreLogger);
+        getServer().getScheduler().scheduleAsyncRepeatingTask(this, oreLogger, 600, 200);
+//        getServer().getScheduler().scheduleAsyncDelayedTask(this, oreLogger);
 		
         log.info( logPrefix + " version [" + getDescription().getVersion() + "] loaded" );
 	}
