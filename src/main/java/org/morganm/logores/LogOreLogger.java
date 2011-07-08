@@ -7,7 +7,12 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.Date;
+import java.util.Formatter;
+import java.util.HashMap;
+import java.util.Locale;
 import java.util.logging.Logger;
+
+import org.bukkit.block.BlockState;
 
 /** This class is responsible for actually writing the logs.
  * 
@@ -21,6 +26,7 @@ public class LogOreLogger implements Runnable {
 	
 	private final LogOresPlugin plugin;
 	private final LogQueue queue;
+	private final HashMap<String, PrevOre> lastOre;
 	
 	private FileWriter writer;
 	private boolean running = false;
@@ -30,6 +36,8 @@ public class LogOreLogger implements Runnable {
 		this.queue = plugin.getLogQueue();
 		this.log = plugin.getLogger();
 		this.logPrefix = plugin.getLogPrefix();
+		
+		lastOre = new HashMap<String, PrevOre>();
 	}
 	
 	/**
@@ -63,8 +71,48 @@ public class LogOreLogger implements Runnable {
 	 * 
 	 * @param bs
 	 */
-	private void logBlock(LogEvent event) throws IOException {
+	private void logBlock(LogEvent event, PrevOre prevOre) throws IOException {
 		StringBuffer sb = new StringBuffer();
+		Formatter formatter = new Formatter(sb, Locale.US);
+		
+		formatter.format("[%s] %-11s broken by %-12s at (x=%6d, y=%4d, z=%6d, world=%s)",
+				new Date().toString(),
+				event.bs.getData().getItemType().toString(),		// MATERIAL name
+				event.playerName,
+				event.bs.getX(),
+				event.bs.getY(),
+				event.bs.getZ(),
+				event.bs.getWorld().getName()
+				);
+		
+		if( prevOre != null ) {
+			double distance = event.bs.getBlock().getLocation().distance(prevOre.bs.getBlock().getLocation());
+			long time = System.currentTimeMillis() - prevOre.time;
+			if( time != 0 )
+				time = time / 1000;
+			
+			// we adjust the distance by subtracting 3 from the last block, basically setting the
+			// ratio to 0 anytime the last block was within 3 of this block, in effect ignoring
+			// blocks that are close to each other.
+			double adjustedDistance = distance - 3;
+			if( adjustedDistance < 0 )
+				adjustedDistance = 0;
+			
+			double ratio = 0;
+			if( adjustedDistance != 0 && time != 0 )
+				ratio = time / distance;
+
+			if( ratio > 0 )
+				formatter.format(" [d=%3.0f, t=%4dsec, r=%3.1f]",
+						distance,
+						time,
+						ratio
+						);
+		}
+		
+		sb.append("\n");
+		
+		/*
 		sb.append("[");
 		sb.append(new Date().toString());
 		sb.append("] ");
@@ -80,11 +128,12 @@ public class LogOreLogger implements Runnable {
 		sb.append(", world=");
 		sb.append(event.bs.getWorld().getName());
 		sb.append(")\n");
+		*/
 		
 		if( writer == null )
 			openLogFile();
 
-		System.out.println("Writing :"+sb.toString());
+//		System.out.println("Writing :"+sb.toString());
 		writer.write(sb.toString());
 		writer.flush();
 	}
@@ -98,7 +147,7 @@ public class LogOreLogger implements Runnable {
 		running = true;
 		LogEvent event = null;
 
-		System.out.println("LogOreLogger running");
+//		System.out.println("LogOreLogger running");
 		
 		if( !openLogFile() ) {
 			log.severe(logPrefix + " Error opening log file, logger shutting down!");
@@ -109,11 +158,23 @@ public class LogOreLogger implements Runnable {
 		
 		int errors = 0;
 		try {
-			System.out.println("blocking waiting for event");
+//			System.out.println("blocking waiting for event");
 			while( errors < MAX_ERRORS && (event = queue.pop()) != null ) {
 				try {
-					System.out.println("got event");
-					logBlock(event);
+//					System.out.println("got event");
+					PrevOre prevOre = lastOre.get(event.playerName);
+					
+					logBlock(event, prevOre);
+					
+					if( prevOre == null ) {
+						prevOre = new PrevOre();
+						lastOre.put(event.playerName, prevOre);
+					}
+					
+					// we save CPU by just re-using the same private class rather than creating
+					// a new object every time.
+					prevOre.bs = event.bs;
+					prevOre.time = System.currentTimeMillis();
 				} catch(IOException e) {
 					log.warning(logPrefix + " Error writing to log file");
 					e.printStackTrace();
@@ -140,4 +201,11 @@ public class LogOreLogger implements Runnable {
 	}
 	
 	public boolean isRunning() { return running; }
+	
+	/** Private class for keeping track of the previous ore found by a given player.
+	 */
+	private class PrevOre {
+		BlockState bs;
+		long time;
+	}
 }

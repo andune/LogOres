@@ -28,7 +28,7 @@ public class LogOresBlockListener extends BlockListener {
 		
 		// check to see if this is an ore we should log
 		for(int i=0; i < logOres.length; i++) {
-			System.out.println("Checking blockType "+blockType+" against "+logOres[i]);
+//			System.out.println("Checking blockType "+blockType+" against "+logOres[i]);
 			if( blockType == logOres[i] ) {
 				logQueue.push(new LogEvent(event.getPlayer().getName(), event.getBlock().getState()));
 				break;
