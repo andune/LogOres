@@ -1,3 +1,7 @@
+v0.4 - July 8, 2011
+Added non-ore block counting as a way of adjusting the ratio to rule out
+false positives as well as a lightweight way of detecting possible caves
+
 v0.3 - July 7, 2011
 Changed log formatting, added distance/time/ratio
 Cleaned up debug messages

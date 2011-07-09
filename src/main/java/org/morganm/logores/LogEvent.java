@@ -18,10 +18,12 @@ public class LogEvent {
 	public String playerName;
 	public BlockState bs;
 	public long time;
+	public int nonOreCounter;
 	
-	public LogEvent(String playerName, BlockState bs, long time) {
+	public LogEvent(String playerName, BlockState bs, long time, int nonOreCounter) {
 		this.playerName = playerName;
 		this.bs = bs;
 		this.time = time;
+		this.nonOreCounter = nonOreCounter;
 	}
 }

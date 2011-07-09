@@ -5,6 +5,8 @@ package org.morganm.logores;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.logging.Logger;
 
 import org.bukkit.command.Command;
@@ -24,6 +26,11 @@ import org.morganm.logores.config.LogOresConfig;
  */
 public class LogOresPlugin extends JavaPlugin implements JavaConfigPlugin {
 	public static final Logger log = Logger.getLogger(LogOresPlugin.class.toString());
+	
+	/* Map to keep track of player non-ore block hits in between block hits.
+	 * 
+	 */
+	public Map<String, Counter> playerNonOreCount;
 	
 	private String logPrefix;
 	private String pluginName;
@@ -50,6 +57,8 @@ public class LogOresPlugin extends JavaPlugin implements JavaConfigPlugin {
 	@Override
 	public void onEnable() {
 		boolean loadError = false;
+		
+		playerNonOreCount = new HashMap<String, Counter>(); 
 		
     	pluginName = getDescription().getName();
     	logPrefix = "[" + pluginName + "]";

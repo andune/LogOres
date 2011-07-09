@@ -87,27 +87,51 @@ public class LogOreLogger implements Runnable {
 		
 		if( prevOre != null ) {
 			double distance = event.bs.getBlock().getLocation().distance(prevOre.bs.getBlock().getLocation());
-			long time = System.currentTimeMillis() - prevOre.time;
+			long time = event.time - prevOre.time;
 			if( time != 0 )
 				time = time / 1000;
 			
-			// we adjust the distance by subtracting 3 from the last block, basically setting the
+			// we adjust the distance by subtracting 3 from the distance, basically setting the
 			// ratio to 0 anytime the last block was within 3 of this block, in effect ignoring
 			// blocks that are close to each other.
 			double adjustedDistance = distance - 3;
 			if( adjustedDistance < 0 )
 				adjustedDistance = 0;
+
+			boolean probablyCave = false;
+			// if we've mined less blocks than the distance, it probably indicates we're in a cave with
+			// lots of open space between visible ores.  We use adjusted distance to make sure we don't
+			// accidentally flag a cave when it's really just adjacent/nearby ore blocks
+			if( event.nonOreCounter < adjustedDistance )
+				probablyCave = true;
+			
+			double divisor = 0;
+			if( adjustedDistance != 0 ) {
+				// if nonOreCounter is 0, consider it as "1" so we don't divide by zero below - basically
+				// just sets the final divisor to whatever the distance is.
+				divisor = event.nonOreCounter;
+				if( divisor == 0 )
+					divisor = 1;
+			
+				divisor = distance / divisor;
+			}
 			
 			double ratio = 0;
-			if( adjustedDistance != 0 && time != 0 )
-				ratio = time / distance;
+			if( divisor != 0 && time != 0 ) {
+				ratio = time / divisor;
+			}
 
-			if( ratio > 0 )
-				formatter.format(" [d=%3.0f, t=%4dsec, r=%3.1f]",
-						distance,
+			if( ratio > 0 ) {
+				formatter.format(" [t=%4dsec / (d=%3.0f / b=%4d) = r=%3.1f]",
 						time,
+						distance,
+						event.nonOreCounter,
 						ratio
 						);
+				
+				if( probablyCave )
+					sb.append(" [cave?]");
+			}
 		}
 		
 		sb.append("\n");
