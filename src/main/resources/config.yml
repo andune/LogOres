@@ -2,3 +2,14 @@ loggedOres:
 - 14
 - 15
 - 56
+logFile: "plugins/LogOres/oreLog.txt"
+# this weeds out false positives as a result of really close ores
+minDistance: 5
+# this weeds out false positives as a result of cave systems, where very little mining
+# takes place between ores (lots of open air)
+minBlocks: 10
+# Ratio for flagging: any ratio less than this value will be flagged with "flagged" in the log
+# file for easy searching, and a series of flagged entries from the same player likely
+# indicates a wall hack/texture pack cheat being used.  Set here in config so you can tune
+# it to your needs, I generally find this value to be reasonable.
+flagRatio: 250

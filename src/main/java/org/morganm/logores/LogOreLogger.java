@@ -31,6 +31,11 @@ public class LogOreLogger implements Runnable {
 	private FileWriter writer;
 	private boolean running = false;
 	
+	private int minDistance;
+	private int minBlocks;
+	private int flagRatio;
+	private String logFile;
+	
 	public LogOreLogger(LogOresPlugin plugin) {
 		this.plugin = plugin;
 		this.queue = plugin.getLogQueue();
@@ -38,6 +43,24 @@ public class LogOreLogger implements Runnable {
 		this.logPrefix = plugin.getLogPrefix();
 		
 		lastOre = new HashMap<String, PrevOre>();
+	}
+	
+	public void reloadConfig() {
+		minDistance = plugin.getConfig().getInt("minDistance", 5);
+		minBlocks = plugin.getConfig().getInt("minBlocks", 10);
+		flagRatio = plugin.getConfig().getInt("flagRatio", 250);
+		
+		String oldLogPath = logFile;
+		// if the logFile changed, close the old file and open the new one
+		if( (logFile = plugin.getConfig().getString("logFile", "plugins/LogOres/oreLog.txt")).equals(oldLogPath) ) {
+			if( writer != null ) {
+				try {
+					writer.close();
+				} catch(IOException e) { e.printStackTrace(); }
+			}
+			
+			openLogFile();
+		}
 	}
 	
 	/**
@@ -87,77 +110,53 @@ public class LogOreLogger implements Runnable {
 		
 		if( prevOre != null ) {
 			double distance = event.bs.getBlock().getLocation().distance(prevOre.bs.getBlock().getLocation());
-			long time = event.time - prevOre.time;
-			if( time != 0 )
-				time = time / 1000;
 			
-			// we adjust the distance by subtracting 3 from the distance, basically setting the
-			// ratio to 0 anytime the last block was within 3 of this block, in effect ignoring
-			// blocks that are close to each other.
-			double adjustedDistance = distance - 3;
-			if( adjustedDistance < 0 )
-				adjustedDistance = 0;
-
-			boolean probablyCave = false;
-			// if we've mined less blocks than the distance, it probably indicates we're in a cave with
-			// lots of open space between visible ores.  We use adjusted distance to make sure we don't
-			// accidentally flag a cave when it's really just adjacent/nearby ore blocks
-			if( event.nonOreCounter < adjustedDistance )
-				probablyCave = true;
-			
-			double divisor = 0;
-			if( adjustedDistance != 0 ) {
+			if( distance > minDistance && event.nonOreCounter > minBlocks ) {
+				long time = event.time - prevOre.time;
+				if( time != 0 )
+					time = time / 1000;
+				
+				boolean probablyCave = false;
+				// if we've mined less blocks than the distance, it probably indicates we're in a cave with
+				// lots of open space between visible ores.  We use adjusted distance to make sure we don't
+				// accidentally flag a cave when it's really just adjacent/nearby ore blocks
+				if( event.nonOreCounter < (distance-minDistance) )
+					probablyCave = true;
+				
 				// if nonOreCounter is 0, consider it as "1" so we don't divide by zero below - basically
 				// just sets the final divisor to whatever the distance is.
-				divisor = event.nonOreCounter;
+				double divisor = event.nonOreCounter;
 				if( divisor == 0 )
 					divisor = 1;
-			
-				divisor = distance / divisor;
-			}
-			
-			double ratio = 0;
-			if( divisor != 0 && time != 0 ) {
-				ratio = time / divisor;
-			}
-
-			if( ratio > 0 ) {
-				formatter.format(" [t=%4dsec / (d=%3.0f / b=%4d) = r=%3.1f]",
-						time,
-						distance,
-						event.nonOreCounter,
-						ratio
-						);
 				
-				if( probablyCave )
-					sb.append(" [cave?]");
+				divisor = distance / divisor;
+				
+				double ratio = 0;
+				if( divisor != 0 && time != 0 )
+					ratio = time / divisor;
+	
+				if( ratio > 0 ) {
+					formatter.format(" [t=%4dsec / (d=%3.0f / b=%4d) = r=%3.1f]",
+							time,
+							distance,
+							event.nonOreCounter,
+							ratio
+							);
+					
+					if( ratio < flagRatio )
+						sb.append(" [flagged]");
+					
+					if( probablyCave )
+						sb.append(" [cave?]");
+				}
 			}
 		}
 		
 		sb.append("\n");
 		
-		/*
-		sb.append("[");
-		sb.append(new Date().toString());
-		sb.append("] ");
-		sb.append(event.bs.getData().getItemType().toString());
-		sb.append(" broken by ");
-		sb.append(event.playerName);
-		sb.append(" at (x=");
-		sb.append(event.bs.getX());
-		sb.append(", y=");
-		sb.append(event.bs.getY());
-		sb.append(", z=");
-		sb.append(event.bs.getZ());
-		sb.append(", world=");
-		sb.append(event.bs.getWorld().getName());
-		sb.append(")\n");
-		*/
-		
 		if( writer == null )
 			openLogFile();
 
-//		System.out.println("Writing :"+sb.toString());
 		try {
 			writer.write(sb.toString());
 		}
@@ -169,8 +168,8 @@ public class LogOreLogger implements Runnable {
 		}
 	}
 	
-	/** This method will be called once by Bukkit Scheduler.  It will try to read the Queue
-	 * and block until data is ready.
+	/** This method will be called repeatedly every few seconds by the Bukkit Scheduler.
+	 * It will read the block queue until empty and then exit.
 	 * 
 	 */
 	@Override
@@ -182,8 +181,6 @@ public class LogOreLogger implements Runnable {
 		running = true;
 		LogEvent event = null;
 
-//		System.out.println("LogOreLogger running");
-		
 		if( writer == null && !openLogFile() ) {
 			log.severe(logPrefix + " Error opening log file, logger shutting down!");
 			plugin.shutdownPlugin();
@@ -192,11 +189,9 @@ public class LogOreLogger implements Runnable {
 		}
 		
 		int errors = 0;
-//		System.out.println("blocking waiting for event");
 		while( errors < MAX_ERRORS && !queue.isEmpty() ) {
 			try {
 				event = queue.pop();
-//				System.out.println("got event");
 				PrevOre prevOre = lastOre.get(event.playerName);
 
 				logBlock(event, prevOre);

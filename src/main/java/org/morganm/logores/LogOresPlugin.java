@@ -41,13 +41,23 @@ public class LogOresPlugin extends JavaPlugin implements JavaConfigPlugin {
 	private LogOreLogger oreLogger;
 	
 	public void loadConfig() throws ConfigException, IOException {
+		boolean firstTime = true;
+		if( config != null )
+			firstTime = false;
+		
 		config = ConfigFactory.getInstance(ConfigFactory.Type.YAML, this, "plugins/"+pluginName+"/config.yml");
 		config.load();
 		
 		logOresConfig = new LogOresConfig(this);
 		logOresConfig.processConfig();
 		
-		blockListener.reloadConfig();
+		if( blockListener != null )
+			blockListener.reloadConfig();
+		if( oreLogger != null )
+			oreLogger.reloadConfig();
+		
+		if( !firstTime )
+			log.info(logPrefix + " config live reload complete");
 	}
 	
 	public void shutdownPlugin() {
@@ -84,6 +94,8 @@ public class LogOresPlugin extends JavaPlugin implements JavaConfigPlugin {
         getServer().getPluginManager().registerEvent(Event.Type.BLOCK_BREAK, blockListener, Priority.Monitor, this);
         
         oreLogger = new LogOreLogger(this);
+		oreLogger.reloadConfig();
+		
         getServer().getScheduler().scheduleAsyncRepeatingTask(this, oreLogger, 600, 200);
 //        getServer().getScheduler().scheduleAsyncDelayedTask(this, oreLogger);
 		
