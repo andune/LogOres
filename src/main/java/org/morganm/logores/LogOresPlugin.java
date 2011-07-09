@@ -11,14 +11,20 @@ import java.util.logging.Logger;
 
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
+import org.bukkit.command.ConsoleCommandSender;
+import org.bukkit.entity.Player;
 import org.bukkit.event.Event;
 import org.bukkit.event.Event.Priority;
+import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.morganm.logores.config.Config;
 import org.morganm.logores.config.ConfigException;
 import org.morganm.logores.config.ConfigFactory;
 import org.morganm.logores.config.JavaConfigPlugin;
 import org.morganm.logores.config.LogOresConfig;
+
+import com.nijiko.permissions.PermissionHandler;
+import com.nijikokun.bukkit.Permissions.Permissions;
 
 /**
  * @author morganm
@@ -27,6 +33,9 @@ import org.morganm.logores.config.LogOresConfig;
 public class LogOresPlugin extends JavaPlugin implements JavaConfigPlugin {
 	public static final Logger log = Logger.getLogger(LogOresPlugin.class.toString());
 	
+	// yellow
+    private static final String MOD_COLOR = "\u00A7e";
+    
 	/* Map to keep track of player non-ore block hits in between block hits.
 	 * 
 	 */
@@ -39,6 +48,7 @@ public class LogOresPlugin extends JavaPlugin implements JavaConfigPlugin {
 	private LogQueue logQueue;
 	private LogOresBlockListener blockListener;
 	private LogOreLogger oreLogger;
+    private PermissionHandler permissionHandler;
 	
 	public void loadConfig() throws ConfigException, IOException {
 		boolean firstTime = true;
@@ -76,6 +86,8 @@ public class LogOresPlugin extends JavaPlugin implements JavaConfigPlugin {
 		logQueue = new LogQueue();
     	blockListener = new LogOresBlockListener(this);
     	
+		initPermissions();
+		
     	try {
     		loadConfig();
     	}
@@ -114,9 +126,15 @@ public class LogOresPlugin extends JavaPlugin implements JavaConfigPlugin {
 	@Override
 	public boolean onCommand(CommandSender sender, Command command, String label, String[] args)
 	{
-		if( command.equals("lo") ) {
+		String commandName = command.getName().toLowerCase();
+		
+		if( commandName.equals("lo") ) {
+			if( !hasPermission(sender, "logores.admin") )
+				return false;
+			
 			if( args.length < 1 ) {
-				sendMessage(sender, "Usage:\nlo reload - reload config file\n");
+				sendMessage(sender, "Usage:");
+				sendMessage(sender, "  /lo reload - reload config file\n");
 			}
 			else if( args[0].equals("reload") || args[0].equals("rc") ) {	// reload config
 				try {
@@ -134,12 +152,37 @@ public class LogOresPlugin extends JavaPlugin implements JavaConfigPlugin {
 		return false;
 	}
 	
+    /** Initialize permission system.
+     * 
+     */
+    private void initPermissions() {
+        Plugin permissionsPlugin = getServer().getPluginManager().getPlugin("Permissions");
+        if( permissionsPlugin != null )
+        	permissionHandler = ((Permissions) permissionsPlugin).getHandler();
+        else
+	    	log.warning(logPrefix+" Permissions system not enabled, using isOP instead.");
+    }
+    
+    public boolean hasPermission(CommandSender sender, String permissionNode) {
+		if( sender instanceof ConsoleCommandSender )
+			return true;
+		
+		if( sender instanceof Player ) {
+	    	if( permissionHandler != null ) 
+	    		return permissionHandler.has((Player) sender, permissionNode);
+	    	else
+	    		return sender.isOp();
+		}
+		
+		return false;
+    }
+	
 	/** Write a mod message to the target, using our preferred color.
 	 * 
 	 * @param target
 	 */
 	public void sendMessage(CommandSender target, String message) {
-		target.sendMessage("&a" + message);
+		target.sendMessage(MOD_COLOR + message);
 	}
 	
 	public Config getConfig() { return config; }

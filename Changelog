@@ -1,8 +1,11 @@
+v0.5.1 - July 9, 2011
+added permissions/op check "logores.admin" for /lo command
+First public release
+
 v0.5 - July 9, 2011
 Moved various config options into config file
 Added automatic flagging based on admin-defined ratio (makes it easy to search
 through logs for possible cheat violations)
-First public release
 
 v0.4 - July 8, 2011
 Added non-ore block counting as a way of adjusting the ratio to rule out
