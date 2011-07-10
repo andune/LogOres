@@ -1,15 +1,58 @@
+# default 14 (gold), 15 (iron) and 56 (diamond) - MUST USE DATA VALUES
+# # http://www.minecraftwiki.net/wiki/Data_values
 loggedOres:
 - 14
 - 15
 - 56
+
 logFile: "plugins/LogOres/oreLog.txt"
+
 # this weeds out false positives as a result of really close ores
 minDistance: 5
+
 # this weeds out false positives as a result of cave systems, where very little mining
 # takes place between ores (lots of open air)
 minBlocks: 10
-# Ratio for flagging: any ratio less than this value will be flagged with "flagged" in the log
-# file for easy searching, and a series of flagged entries from the same player likely
-# indicates a wall hack/texture pack cheat being used.  Set here in config so you can tune
-# it to your needs, I generally find this value to be reasonable.
-flagRatio: 250
+
+# This defines the maximum number of blocks that can be mined before we don't consider
+# the next ore to be part of a "cave" system
+maxCaveBlocks: 50
+
+flagging:
+  # Ratio for flagging: any ratio less than this value will be flagged with "flagged" in the log
+  # file for easy searching, and a series of flagged entries from the same player likely
+  # indicates a wall hack/texture pack cheat being used.  Set here in config so you can tune
+  # it to your needs, I generally find this value to be reasonable.
+  ratio: 250
+
+  # maxTime defines the maximum time that we consider for flagging - if the time between
+  # ores exceeds this time, it won't be flagged.  This helps prevent false positives.
+  # If set to 0, this setting is not used.
+  maxTime: 600
+
+  # maxDistance defines the maximum distance that we consider for flagging - this avoids
+  # false positives from for people that go above ground and then go back under somewhere
+  # else far way.
+  # If set to 0, this setting is not used.
+  maxDistance: 600
+
+  # This defines fuzzy match variance for reducing false-positives. Basically if the player
+  # is horizontally mining and finds ores that are within the the allowable variance, they
+  # won't be flagged.  Set to 0 to disable and have no variance detection, although be
+  # warned you will likely get a higher number of [flagged] false positives.
+  #
+  # Default values of vertical: 3 and horizontal: 2 allow for normal horizontal strip
+  # mining activities without triggering any alerts.
+  allowedVariance:
+    vertical: 3
+    horizontal: 2
+
+  # if notify is true, anyone with the 'logores.notify' permission will be notified on
+  # a flagged entry
+  notify: false
+  # by default we don't count [cave?] entries toward notification. Set this flag to true
+  # to change that behavior.
+  notifyInCaves: false
+  # you can tune this to be the number of flagged events are required before a notification
+  # is sent.
+  flagsBeforeNotify: 3

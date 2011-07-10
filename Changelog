@@ -1,3 +1,10 @@
+v0.6 - July 9, 2011
+added several tuneable parameters to ore flagging to help admins tune out
+false positives
+added in-game notification system via "logores.notify" permission and
+"logores.notify.ignore" for ignoring notifications from certain players
+(such as mods/admins)
+
 v0.5.1 - July 9, 2011
 added permissions/op check "logores.admin" for /lo command
 First public release

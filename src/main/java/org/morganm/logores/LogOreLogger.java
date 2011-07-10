@@ -6,13 +6,17 @@ package org.morganm.logores;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.Formatter;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.logging.Logger;
 
+import org.bukkit.Location;
 import org.bukkit.block.BlockState;
+import org.bukkit.entity.Player;
 
 /** This class is responsible for actually writing the logs.
  * 
@@ -27,6 +31,7 @@ public class LogOreLogger implements Runnable {
 	private final LogOresPlugin plugin;
 	private final LogQueue queue;
 	private final HashMap<String, PrevOre> lastOre;
+	private final HashMap<String, Integer> flaggedViolations;
 	
 	private FileWriter writer;
 	private boolean running = false;
@@ -34,6 +39,14 @@ public class LogOreLogger implements Runnable {
 	private int minDistance;
 	private int minBlocks;
 	private int flagRatio;
+	private int maxCaveBlocks;
+	private int maxFlagTime;
+	private int maxFlagDistance;
+	private int verticalVariance;
+	private int horizontalVariance;
+	private int flagsBeforeNotify;
+	private boolean notifyOnFlag = false;
+	private boolean notifyInCaves = false;
 	private String logFile;
 	
 	public LogOreLogger(LogOresPlugin plugin) {
@@ -43,12 +56,25 @@ public class LogOreLogger implements Runnable {
 		this.logPrefix = plugin.getLogPrefix();
 		
 		lastOre = new HashMap<String, PrevOre>();
+		flaggedViolations = new HashMap<String, Integer>();
 	}
 	
 	public void reloadConfig() {
 		minDistance = plugin.getConfig().getInt("minDistance", 5);
 		minBlocks = plugin.getConfig().getInt("minBlocks", 10);
-		flagRatio = plugin.getConfig().getInt("flagRatio", 250);
+		flagRatio = plugin.getConfig().getInt("flagging.ratio", 250);
+		maxCaveBlocks = plugin.getConfig().getInt("maxCaveBlocks", 0);
+		
+		// ways to tune out false positives on flagging, all of this defaults to off unless turned
+		// on in the config file
+		maxFlagTime = plugin.getConfig().getInt("flagging.maxTime", 0);
+		maxFlagDistance = plugin.getConfig().getInt("flagging.maxDistance", 0);
+		verticalVariance = plugin.getConfig().getInt("flagging.allowedVariance.vertical", 0);
+		horizontalVariance = plugin.getConfig().getInt("flagging.allowedVariance.horizontal", 0);
+		
+		notifyOnFlag = plugin.getConfig().getBoolean("flagging.notify", false);
+		notifyInCaves = plugin.getConfig().getBoolean("flagging.notifyInCaves", false);
+		flagsBeforeNotify = plugin.getConfig().getInt("flagging.flagsBeforeNotify", 3);
 		
 		String oldLogPath = logFile;
 		// if the logFile changed, close the old file and open the new one
@@ -98,8 +124,7 @@ public class LogOreLogger implements Runnable {
 		StringBuffer sb = new StringBuffer();
 		Formatter formatter = new Formatter(sb, Locale.US);
 		
-		formatter.format("[%s] %-11s broken by %-12s at (x=%6d, y=%4d, z=%6d, world=%s)",
-				new Date().toString(),
+		formatter.format("%-11s broken by %-12s at (x=%6d, y=%4d, z=%6d, world=%s)",
 				event.bs.getData().getItemType().toString(),		// MATERIAL name
 				event.playerName,
 				event.bs.getX(),
@@ -108,6 +133,9 @@ public class LogOreLogger implements Runnable {
 				event.bs.getWorld().getName()
 				);
 		
+		boolean isFlagged = false;
+		boolean probablyCave = false;
+		
 		if( prevOre != null ) {
 			double distance = event.bs.getBlock().getLocation().distance(prevOre.bs.getBlock().getLocation());
 			
@@ -115,13 +143,6 @@ public class LogOreLogger implements Runnable {
 				long time = event.time - prevOre.time;
 				if( time != 0 )
 					time = time / 1000;
-				
-				boolean probablyCave = false;
-				// if we've mined less blocks than the distance, it probably indicates we're in a cave with
-				// lots of open space between visible ores.  We use adjusted distance to make sure we don't
-				// accidentally flag a cave when it's really just adjacent/nearby ore blocks
-				if( event.nonOreCounter < (distance-minDistance) )
-					probablyCave = true;
 				
 				// if nonOreCounter is 0, consider it as "1" so we don't divide by zero below - basically
 				// just sets the final divisor to whatever the distance is.
@@ -144,28 +165,114 @@ public class LogOreLogger implements Runnable {
 							);
 					
 					if( ratio < flagRatio )
-						sb.append(" [flagged]");
+					{
+						// make sure we are within flaggable configuration limits
+						if( (maxFlagTime == 0 || time < maxFlagTime) &&
+						    (maxFlagDistance == 0 || distance < maxFlagDistance) )
+						{
+							// if we are here, this is a flagged entry, unless the variance checks below change that fact
+							isFlagged = true;
+							
+							// if allowed variances are defined, check those too
+							if( verticalVariance != 0 || horizontalVariance != 0 ) {
+								boolean inHorizontalVariance = false;
+								boolean inVerticalVariance = false;
+								
+								Location blockLocation = event.bs.getBlock().getLocation();
+								Location prevBlockLocation = prevOre.bs.getBlock().getLocation();
+								
+								int varianceX = blockLocation.getBlockX() - prevBlockLocation.getBlockX();
+								int varianceZ = blockLocation.getBlockZ() - prevBlockLocation.getBlockZ();
+								
+								if( Math.abs(varianceX) <= horizontalVariance || Math.abs(varianceZ) <= horizontalVariance )
+									inHorizontalVariance = true;
+								
+								int varianceY = blockLocation.getBlockY() - prevBlockLocation.getBlockY();
+								if( Math.abs(varianceY) <= verticalVariance )
+									inVerticalVariance = true;
+								
+//								System.out.println("varianceX = "+varianceX+", varianceZ = "+varianceZ+", varianceY = "+varianceY);
+								// are we in within variance limits?  if so, don't flag this entry
+								if( inHorizontalVariance && inVerticalVariance )
+									isFlagged = false;
+							}
+							
+							if( isFlagged )
+								sb.append(" [flagged]");
+							else
+								sb.append(" [in variance]");
+						}
+					}
 					
-					if( probablyCave )
+					// if we've mined less blocks than the distance, it probably indicates we're in a cave with
+					// lots of open space between visible ores.  We use adjusted distance to make sure we don't
+					// accidentally flag a cave when it's really just adjacent/nearby ore blocks
+					if( event.nonOreCounter < (distance-minDistance) && (maxCaveBlocks == 0 || event.nonOreCounter < maxCaveBlocks) ) {
+						probablyCave = true;
 						sb.append(" [cave?]");
+					}
 				}
 			}
 		}
 		
 		sb.append("\n");
+
+		String logMessage = sb.toString();
+		
+		// if it's flagged, notify if we're supposed to, unless it's a cave and we're not supposed to
+		if( (notifyOnFlag && isFlagged) && (notifyInCaves || !probablyCave) ) {
+			Player oreBreaker = plugin.getServer().getPlayer(event.playerName);
+			
+			if( oreBreaker == null || !isIgnoredNotify(oreBreaker) )	// skip if player is on ignored notification list
+			{
+				Integer flagCount = flaggedViolations.get(event.playerName);
+				if( flagCount == null )
+					flagCount = Integer.valueOf(0);
+				
+				flagCount = Integer.valueOf(flagCount+1);
+				flaggedViolations.put(event.playerName, flagCount);
+				
+				if( flagCount >= flagsBeforeNotify ) {
+					List<Player> notifyPlayers = getNotifyPlayers();
+					for(Player p : notifyPlayers)
+						plugin.sendMessage(p, logMessage + " [flagCount: "+flagCount+"]");
+				}
+			}
+		}
 		
 		if( writer == null )
 			openLogFile();
 
+		String dateStamp = "[" + new Date().toString() + "] ";
 		try {
-			writer.write(sb.toString());
+			writer.write(dateStamp + logMessage);
 		}
 		catch(IOException e) {
 			if( e.getMessage().contains("Stream closed") ) {	// ugh terrible code based on implementation message, I know
 				openLogFile();
-				writer.write(sb.toString());
+				writer.write(dateStamp + logMessage);
 			}
 		}
+	}
+	
+	private boolean isIgnoredNotify(Player p) {
+		return plugin.hasPermission(p, "logores.notify.ignore");
+	}
+	
+	/** Return the list of players to be notified on a flagged event.
+	 * 
+	 * @return
+	 */
+	private List<Player> getNotifyPlayers() {
+		List<Player> players = new ArrayList<Player>();
+		
+		Player[] onlinePlayers = plugin.getServer().getOnlinePlayers();
+		for(int i=0; i < onlinePlayers.length; i++) {
+			if( plugin.hasPermission(onlinePlayers[i], "logores.notify") )
+				players.add(onlinePlayers[i]);
+		}
+		
+		return players;
 	}
 	
 	/** This method will be called repeatedly every few seconds by the Bukkit Scheduler.
