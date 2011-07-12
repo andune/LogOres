@@ -108,8 +108,10 @@ public class LogOresPlugin extends JavaPlugin implements JavaConfigPlugin {
         oreLogger = new LogOreLogger(this);
 		oreLogger.reloadConfig();
 		
-        getServer().getScheduler().scheduleAsyncRepeatingTask(this, oreLogger, 600, 200);
-//        getServer().getScheduler().scheduleAsyncDelayedTask(this, oreLogger);
+        getServer().getScheduler().scheduleAsyncDelayedTask(this, oreLogger);
+        
+		WatchDog watchDog = new WatchDog(this);
+        getServer().getScheduler().scheduleAsyncRepeatingTask(this, watchDog, 600, 200);
 		
         log.info( logPrefix + " version [" + getDescription().getVersion() + "] loaded" );
 	}
@@ -117,6 +119,7 @@ public class LogOresPlugin extends JavaPlugin implements JavaConfigPlugin {
 	@Override
 	public void onDisable() {
 		try {
+			getServer().getScheduler().cancelTasks(this);
 			oreLogger.close();
 		} catch(IOException e) { e.printStackTrace(); }
 		
@@ -188,6 +191,7 @@ public class LogOresPlugin extends JavaPlugin implements JavaConfigPlugin {
 	public Config getConfig() { return config; }
 	public LogOresConfig getLogOresConfig() { return logOresConfig; }
 	public LogQueue getLogQueue() { return logQueue; }
+	public LogOreLogger getOreLogger() { return oreLogger; }
 	
 	public File getJarFile() {
 		return super.getFile();

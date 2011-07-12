@@ -34,7 +34,9 @@ public class LogOreLogger implements Runnable {
 	private final HashMap<String, Integer> flaggedViolations;
 	
 	private FileWriter writer;
+	private HashMap<String, FileWriter> writerPerWorld;
 	private boolean running = false;
+	private long zombieTime = 0; 
 	
 	private int minDistance;
 	private int minBlocks;
@@ -47,6 +49,9 @@ public class LogOreLogger implements Runnable {
 	private int flagsBeforeNotify;
 	private boolean notifyOnFlag = false;
 	private boolean notifyInCaves = false;
+	private boolean logFilePerWorld = false;
+	private boolean logLightLevel = false;
+	private List<String> notifyIgnoredWorlds;
 	private String logFile;
 	
 	public LogOreLogger(LogOresPlugin plugin) {
@@ -61,9 +66,11 @@ public class LogOreLogger implements Runnable {
 	
 	public void reloadConfig() {
 		minDistance = plugin.getConfig().getInt("minDistance", 5);
-		minBlocks = plugin.getConfig().getInt("minBlocks", 10);
+		minBlocks = plugin.getConfig().getInt("flagging.minBlocks", 10);
 		flagRatio = plugin.getConfig().getInt("flagging.ratio", 250);
 		maxCaveBlocks = plugin.getConfig().getInt("maxCaveBlocks", 0);
+		logFilePerWorld = plugin.getConfig().getBoolean("logFilePerWorld", false);
+		logLightLevel = plugin.getConfig().getBoolean("logLightLevel", false);
 		
 		// ways to tune out false positives on flagging, all of this defaults to off unless turned
 		// on in the config file
@@ -76,6 +83,13 @@ public class LogOreLogger implements Runnable {
 		notifyInCaves = plugin.getConfig().getBoolean("flagging.notifyInCaves", false);
 		flagsBeforeNotify = plugin.getConfig().getInt("flagging.flagsBeforeNotify", 3);
 		
+		notifyIgnoredWorlds = plugin.getConfig().getStringList("flagging.notifyIgnoredWorlds", null);
+		
+		if( logFilePerWorld && writerPerWorld == null )
+			writerPerWorld = new HashMap<String, FileWriter>();
+
+		logFile = plugin.getConfig().getString("logFile", "plugins/LogOres/logOres");
+		/*
 		String oldLogPath = logFile;
 		// if the logFile changed, close the old file and open the new one
 		if( (logFile = plugin.getConfig().getString("logFile", "plugins/LogOres/oreLog.txt")).equals(oldLogPath) ) {
@@ -87,28 +101,50 @@ public class LogOreLogger implements Runnable {
 			
 			openLogFile();
 		}
+		*/
 	}
 	
 	/**
 	 * 
-	 * @return true if logfile opened OK, false on error
+	 * @return writer that was opened on success, null on failure
 	 */
-	private boolean openLogFile() {
-		boolean error = true;
+	private FileWriter openLogFile(String world) {
+		FileWriter fileWriter = null;
+		String fileName = null;
+
+		int txtIndex;
+		if( (txtIndex = logFile.indexOf(".txt")) != -1 ) {
+			logFile = logFile.substring(0, txtIndex);
+			log.info(logPrefix + " Changed base logFile path to (dropped .txt): "+logFile);
+		}
+		
+		// if we're only logging one file for all worlds, then don't add world as part of filename
+		if( !logFilePerWorld )
+			fileName = logFile + ".txt";
+		else
+			fileName = logFile + "." + world + ".txt";
 		
 		try {
 			// TODO: move to config setting
-			File file = new File("plugins/LogOres/oreLog.txt");
+			File file = new File(fileName);
 			if( !file.exists() )
 				file.createNewFile();
-			writer = new FileWriter(file, true);		// append
-			error = false;
+			fileWriter = new FileWriter(file, true);		// append
 		}
 		catch(Exception e) {
 			e.printStackTrace();
 		}
+
+		// indicates error opening the writer
+		if( fileWriter == null )
+			return null;
 		
-		return !error;
+		if( logFilePerWorld )
+			writerPerWorld.put(world, fileWriter);
+		else
+			writer = fileWriter;
+		
+		return fileWriter;
 	}
 	
 	public void close() throws IOException {
@@ -124,22 +160,42 @@ public class LogOreLogger implements Runnable {
 		StringBuffer sb = new StringBuffer();
 		Formatter formatter = new Formatter(sb, Locale.US);
 		
-		formatter.format("%-11s broken by %-12s at (x=%6d, y=%4d, z=%6d, world=%s)",
-				event.bs.getData().getItemType().toString(),		// MATERIAL name
-				event.playerName,
-				event.bs.getX(),
-				event.bs.getY(),
-				event.bs.getZ(),
-				event.bs.getWorld().getName()
-				);
+		String eventWorld = event.bs.getWorld().getName();
+		
+		byte b = event.bs.getLightLevel();
+
+		if( logLightLevel )
+			formatter.format("%-11s broken by %-12s at (x=%6d, y=%4d, z=%6d, l=%2d%s)",
+					event.bs.getData().getItemType().toString(),		// MATERIAL name
+					event.playerName,
+					event.bs.getX(),
+					event.bs.getY(),
+					event.bs.getZ(),
+					event.bs.getBlock().getLightLevel(),
+					logFilePerWorld ? "" : ", world=" +eventWorld
+					);
+		else
+			formatter.format("%-11s broken by %-12s at (x=%6d, y=%4d, z=%6d%s%s)",
+					event.bs.getData().getItemType().toString(),		// MATERIAL name
+					event.playerName,
+					event.bs.getX(),
+					event.bs.getY(),
+					event.bs.getZ(),
+					logFilePerWorld ? "" : ", world=" +eventWorld
+					);
 		
 		boolean isFlagged = false;
 		boolean probablyCave = false;
 		
+		// if the previous ore was on another world, set it to null, we can't compare distances
+		// across worlds, so we ignore this block for the distance/ratio checks
+		if( prevOre != null && !eventWorld.equals(prevOre.bs.getWorld().getName()) )
+			prevOre = null;
+		
 		if( prevOre != null ) {
 			double distance = event.bs.getBlock().getLocation().distance(prevOre.bs.getBlock().getLocation());
 			
-			if( distance > minDistance && event.nonOreCounter > minBlocks ) {
+			if( distance > minDistance ) {
 				long time = event.time - prevOre.time;
 				if( time != 0 )
 					time = time / 1000;
@@ -168,7 +224,8 @@ public class LogOreLogger implements Runnable {
 					{
 						// make sure we are within flaggable configuration limits
 						if( (maxFlagTime == 0 || time < maxFlagTime) &&
-						    (maxFlagDistance == 0 || distance < maxFlagDistance) )
+						    (maxFlagDistance == 0 || distance < maxFlagDistance) &&
+						    event.nonOreCounter > minBlocks )
 						{
 							// if we are here, this is a flagged entry, unless the variance checks below change that fact
 							isFlagged = true;
@@ -221,9 +278,22 @@ public class LogOreLogger implements Runnable {
 		
 		// if it's flagged, notify if we're supposed to, unless it's a cave and we're not supposed to
 		if( (notifyOnFlag && isFlagged) && (notifyInCaves || !probablyCave) ) {
-			Player oreBreaker = plugin.getServer().getPlayer(event.playerName);
+			boolean ignoreWorld = false;
 			
-			if( oreBreaker == null || !isIgnoredNotify(oreBreaker) )	// skip if player is on ignored notification list
+			Player oreBreaker = plugin.getServer().getPlayer(event.playerName);
+
+			// check to see if we should ignore notifications from this world
+			if( notifyIgnoredWorlds != null && !notifyIgnoredWorlds.isEmpty() ) {
+				for(String world : notifyIgnoredWorlds) {
+					if( world.equals(eventWorld) ) {
+						ignoreWorld = true;
+						break;
+					}
+				}
+			}
+			
+			// skip notify if player is on ignored notification list
+			if( (oreBreaker == null || !isIgnoredNotify(oreBreaker)) && !ignoreWorld )
 			{
 				Integer flagCount = flaggedViolations.get(event.playerName);
 				if( flagCount == null )
@@ -233,24 +303,35 @@ public class LogOreLogger implements Runnable {
 				flaggedViolations.put(event.playerName, flagCount);
 				
 				if( flagCount >= flagsBeforeNotify ) {
+					String msg = logMessage + " [flagCount: "+flagCount+"]";
+					if( logFilePerWorld )
+						msg = "[world="+eventWorld+"] "+msg;
+					
 					List<Player> notifyPlayers = getNotifyPlayers();
 					for(Player p : notifyPlayers)
-						plugin.sendMessage(p, logMessage + " [flagCount: "+flagCount+"]");
+						plugin.sendMessage(p, msg);
 				}
 			}
 		}
 		
-		if( writer == null )
-			openLogFile();
+		FileWriter fileWriter = null;
+		
+		if( logFilePerWorld )
+			fileWriter = writerPerWorld.get(eventWorld);
+		else
+			fileWriter = writer;
+		
+		if( fileWriter == null )
+			fileWriter = openLogFile(eventWorld);
 
 		String dateStamp = "[" + new Date().toString() + "] ";
 		try {
-			writer.write(dateStamp + logMessage);
+			fileWriter.write(dateStamp + logMessage);
 		}
 		catch(IOException e) {
 			if( e.getMessage().contains("Stream closed") ) {	// ugh terrible code based on implementation message, I know
-				openLogFile();
-				writer.write(dateStamp + logMessage);
+				openLogFile(eventWorld);
+				fileWriter.write(dateStamp + logMessage);
 			}
 		}
 	}
@@ -288,17 +369,27 @@ public class LogOreLogger implements Runnable {
 		running = true;
 		LogEvent event = null;
 
+		/*
 		if( writer == null && !openLogFile() ) {
 			log.severe(logPrefix + " Error opening log file, logger shutting down!");
 			plugin.shutdownPlugin();
 			running = false;
 			return;
 		}
+		*/
 		
 		int errors = 0;
-		while( errors < MAX_ERRORS && !queue.isEmpty() ) {
+		int flushCount = 0;
+//		while( errors < MAX_ERRORS && !queue.isEmpty() ) {
+		while( errors < MAX_ERRORS ) {
+			flushCount++;
+			
 			try {
+				zombieTime = 0;
+				// block until we have a new event to process
 				event = queue.pop();
+				zombieTime = System.currentTimeMillis();
+				
 				PrevOre prevOre = lastOre.get(event.playerName);
 
 				logBlock(event, prevOre);
@@ -320,23 +411,58 @@ public class LogOreLogger implements Runnable {
 			}
 			catch(InterruptedException e) {}
 
+			// if the queue is empty, or we've logged more than a set number of messages since
+			// our last flush, force a flush now.
+			if( queue.isEmpty() || flushCount > 20 ) {
+				flushWriters();
+				flushCount = 0;
+			}
+			
 			// if the plugin has been shutdown and the queue is empty, time to exit
 			if( !plugin.isEnabled() && queue.isEmpty() )
 				break;
 		}
 		
-		if( errors > 10 ) {
+		if( errors >= MAX_ERRORS ) {
 			log.severe(logPrefix + " LogOre logger gave up after "+MAX_ERRORS+" errors");
 		}
 
-		try {
-			writer.flush();
-		} catch(IOException e) { e.printStackTrace(); }
+		flushWriters();
 		
 		running = false;
 	}
 	
+	private void flushWriters() {
+		try {
+			if( logFilePerWorld ) {
+				for(FileWriter fileWriter : writerPerWorld.values())
+					fileWriter.flush();
+			}
+			else
+				writer.flush();
+		} catch(IOException e) { e.printStackTrace(); }
+	}
+	
 	public boolean isRunning() { return running; }
+	
+	/** Check to see if we are a zombie - ie. we died in the middle of a run unexpectedly.
+	 * 
+	 * @return
+	 */
+	public boolean isZombie() {
+		if( !running )
+			return false;
+		
+		if( zombieTime != 0 && (System.currentTimeMillis() - zombieTime) > 5000 )
+			return true;
+		else
+			return false;
+	}
+	
+	public void reset() {
+		running = false;
+		zombieTime = 0;
+	}
 	
 	/** Private class for keeping track of the previous ore found by a given player.
 	 */

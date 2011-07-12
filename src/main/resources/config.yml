@@ -5,17 +5,19 @@ loggedOres:
 - 15
 - 56
 
-logFile: "plugins/LogOres/oreLog.txt"
+# base name of the logFile. Note ".txt" will be added automatically. Also if
+# you set logFilePerWorld to true, ".world" will be added before ".txt" as
+# well.
+logFile: "plugins/LogOres/oreLog"
+logFilePerWorld: false
+
+logLightLevel: false
 
 # this weeds out false positives as a result of really close ores
 minDistance: 5
 
-# this weeds out false positives as a result of cave systems, where very little mining
-# takes place between ores (lots of open air)
-minBlocks: 10
-
 # This defines the maximum number of blocks that can be mined before we don't consider
-# the next ore to be part of a "cave" system
+# the next ore to be part of a "cave" system. Just sets a sane upper limit on this check.
 maxCaveBlocks: 50
 
 flagging:
@@ -29,6 +31,10 @@ flagging:
   # ores exceeds this time, it won't be flagged.  This helps prevent false positives.
   # If set to 0, this setting is not used.
   maxTime: 600
+
+  # this weeds out false positives as a result of cave systems, where very little mining
+  # takes place between ores (lots of open air)
+  minBlocks: 10
 
   # maxDistance defines the maximum distance that we consider for flagging - this avoids
   # false positives from for people that go above ground and then go back under somewhere
@@ -56,3 +62,8 @@ flagging:
   # you can tune this to be the number of flagged events are required before a notification
   # is sent.
   flagsBeforeNotify: 3
+ 
+  # worlds to ignore notifications from
+  #notifyIgnoredWorlds:
+  #- world1
+  #- world2

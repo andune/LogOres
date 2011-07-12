@@ -1,3 +1,13 @@
+v0.6.1 - July 12, 2011
+Added ability to log worlds into separate files
+Added ability to suppress notifications from certain worlds
+Added lightLevel logging, although it appears buggy at the moment, Bukkit
+reports 0 light level on blocks with torches right next to them. Will take
+some more research, but you can enable it as just extra log information for
+now.
+Changed logger to be near real-time rather than on a 10 second delay.
+Added WatchDog to be sure logger is restarted if it dies.
+
 v0.6 - July 9, 2011
 added several tuneable parameters to ore flagging to help admins tune out
 false positives
