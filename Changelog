@@ -1,3 +1,7 @@
+v0.6.2 - July 12, 2011
+Fixed bug introduced as a result of lightLevel change (when not using
+logLightLevel)
+
 v0.6.1 - July 12, 2011
 Added ability to log worlds into separate files
 Added ability to suppress notifications from certain worlds

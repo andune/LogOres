@@ -175,7 +175,7 @@ public class LogOreLogger implements Runnable {
 					logFilePerWorld ? "" : ", world=" +eventWorld
 					);
 		else
-			formatter.format("%-11s broken by %-12s at (x=%6d, y=%4d, z=%6d%s%s)",
+			formatter.format("%-11s broken by %-12s at (x=%6d, y=%4d, z=%6d%s)",
 					event.bs.getData().getItemType().toString(),		// MATERIAL name
 					event.playerName,
 					event.bs.getX(),
