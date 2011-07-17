@@ -1,3 +1,6 @@
+v0.6.3 - 
+Fixed lightLevel logging to work consistently
+
 v0.6.2 - July 12, 2011
 Fixed bug introduced as a result of lightLevel change (when not using
 logLightLevel)

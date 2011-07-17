@@ -20,6 +20,7 @@ public class LogOresBlockListener extends BlockListener {
 		this.logQueue = plugin.getLogQueue();
 	}
 	
+	@Override
 	public void onBlockBreak(BlockBreakEvent event) {
 		if (event.isCancelled())
 			return;
@@ -51,7 +52,7 @@ public class LogOresBlockListener extends BlockListener {
 		if( !foundOre )
 			nonOreCounter.counter++;
 	}
-	
+
 	public void reloadConfig() {
 		this.logOres = plugin.getLogOresConfig().getLogIds();
 	}

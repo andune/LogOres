@@ -15,6 +15,8 @@ import java.util.Locale;
 import java.util.logging.Logger;
 
 import org.bukkit.Location;
+import org.bukkit.block.Block;
+import org.bukkit.block.BlockFace;
 import org.bukkit.block.BlockState;
 import org.bukkit.entity.Player;
 
@@ -27,6 +29,11 @@ public class LogOreLogger implements Runnable {
 	private final int MAX_ERRORS = 10;
 	private final Logger log;
 	private final String logPrefix;
+	
+	/* This contains the list of BlockFaces we check for light when lightLevel logging is enabled.  
+	 */
+	private final BlockFace[] lightFaces = {BlockFace.UP, BlockFace.DOWN, BlockFace.NORTH,
+			BlockFace.SOUTH, BlockFace.EAST, BlockFace.WEST};
 	
 	private final LogOresPlugin plugin;
 	private final LogQueue queue;
@@ -162,27 +169,45 @@ public class LogOreLogger implements Runnable {
 		
 		String eventWorld = event.bs.getWorld().getName();
 		
-		byte b = event.bs.getLightLevel();
+		formatter.format("%-11s broken by %-12s at (x=%6d, y=%4d, z=%6d",
+				event.bs.getData().getItemType().toString(),		// MATERIAL name
+				event.playerName,
+				event.bs.getX(),
+				event.bs.getY(),
+				event.bs.getZ()
+				);
+		
+		if( logLightLevel ) {
+			Block b = event.bs.getBlock();
+			byte lightLevel = b.getLightLevel();
 
-		if( logLightLevel )
-			formatter.format("%-11s broken by %-12s at (x=%6d, y=%4d, z=%6d, l=%2d%s)",
-					event.bs.getData().getItemType().toString(),		// MATERIAL name
-					event.playerName,
-					event.bs.getX(),
-					event.bs.getY(),
-					event.bs.getZ(),
-					event.bs.getBlock().getLightLevel(),
-					logFilePerWorld ? "" : ", world=" +eventWorld
-					);
-		else
-			formatter.format("%-11s broken by %-12s at (x=%6d, y=%4d, z=%6d%s)",
-					event.bs.getData().getItemType().toString(),		// MATERIAL name
-					event.playerName,
-					event.bs.getX(),
-					event.bs.getY(),
-					event.bs.getZ(),
-					logFilePerWorld ? "" : ", world=" +eventWorld
-					);
+			/* In MineCraft, you have to calculate the lightLevel of a solid block (such as ore) by looking
+			 * at the lightLevel of adjacent blocks (primarily air blocks, in the case of underground mining).
+			 * So we look at the 6 adjacent blocks and just find the highest lightLevel we can of the six
+			 * and consider that the visible light level of our ore block.
+			 * 
+			 * Note that because this method is run asynchronously on another thread, it's possible by the
+			 * time we get called, that Bukkit has already replaced the ore block with an air block, thus
+			 * the call above to set the lightLevel to that of the block. If we get a non-zero value for the
+			 * block that was broken, we just use that and skip the adjacent block check.
+			 */
+			if( lightLevel == 0 ) {
+				for(BlockFace bf : lightFaces) {
+					byte ll = b.getFace(bf).getLightLevel();
+					if( ll > lightLevel )
+						lightLevel = ll;
+				}
+			}
+			
+			formatter.format(", l=%2d", lightLevel);
+		}
+
+		if( !logFilePerWorld ) {
+			sb.append(", world=");
+			sb.append(eventWorld);
+		}
+		
+		sb.append(")");
 		
 		boolean isFlagged = false;
 		boolean probablyCave = false;
