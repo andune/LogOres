@@ -460,11 +460,15 @@ public class LogOreLogger implements Runnable {
 	private void flushWriters() {
 		try {
 			if( logFilePerWorld ) {
-				for(FileWriter fileWriter : writerPerWorld.values())
-					fileWriter.flush();
+				for(FileWriter fileWriter : writerPerWorld.values()) {
+					if( fileWriter != null )
+						fileWriter.flush();
+				}
 			}
-			else
-				writer.flush();
+			else {
+				if( writer != null )
+					writer.flush();
+			}
 		} catch(IOException e) { e.printStackTrace(); }
 	}
 	
