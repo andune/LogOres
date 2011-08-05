@@ -19,11 +19,13 @@ public class LogEvent {
 	public BlockState bs;
 	public long time;
 	public int nonOreCounter;
+	public int nonDiamondCounter;
 	
-	public LogEvent(String playerName, BlockState bs, long time, int nonOreCounter) {
+	public LogEvent(String playerName, BlockState bs, long time, int nonOreCounter, int nonDiamondCounter) {
 		this.playerName = playerName;
 		this.bs = bs;
 		this.time = time;
 		this.nonOreCounter = nonOreCounter;
+		this.nonDiamondCounter = nonDiamondCounter;
 	}
 }

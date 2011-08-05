@@ -1,3 +1,26 @@
+v0.7 - August 4, 2011
+-Refactored code to support multiple loggers, defined using "logTypes" config
+param. Will be easy now to add DB logging when I get around to it.
+-Created new logger type "excel", logs to .data file in | separated format
+-Changed logging routine back to every 5 seconds on suspicion that perhaps
+the blocking logger might have been causing some of the performance issues a
+few people reported on older versions of java
+-Added paranoidDiamonds flag, on by default. It operates the same as normal
+orelogging/ratios except it's only looking at the difference between diamonds.
+This means if someone nabs a diamond, grabs an iron ore in between and then
+nabs another diamond, only the ratio between the two diamonds is looked at.
+Also the cave algorithm and variance are ignored for diamonds. The net effect
+is that with this flag on, the logs are more likely to notice diamond cheaters
+that might have been able to fly under the radar before.
+-Fixed NPE bug on shutdown.
+-Added "flagging.flagWhenZeroLight" (default: off) which will flag events
+when they are being mined in zero light. Zero light does not necessarilly mean
+a person is ore hacking, but it's does most likely mean they are light hacking
+(ie. they don't need torches to see in the dark).
+-Added counter and reasons to flags, so you will see how many consecutive
+flagged events a person has as well as the reasons they were flagged (ratio,
+lightLevel, paranoidDiamonds).
+
 v0.6.3 - July 17, 2011
 Fixed lightLevel logging to work consistently
 

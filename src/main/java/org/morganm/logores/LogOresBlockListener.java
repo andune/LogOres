@@ -42,15 +42,23 @@ public class LogOresBlockListener extends BlockListener {
 		for(int i=0; i < logOres.length; i++) {
 //			System.out.println("Checking blockType "+blockType+" against "+logOres[i]);
 			if( blockType == logOres[i] ) {
-				logQueue.push(new LogEvent(playerName, event.getBlock().getState(), System.currentTimeMillis(), nonOreCounter.counter));
+				logQueue.push(new LogEvent(playerName, event.getBlock().getState(),
+						System.currentTimeMillis(), nonOreCounter.counter, nonOreCounter.nonDiamondCounter));
 				nonOreCounter.counter = 0;	// reset non-ore counter
+				
+				// we have a separate counter for diamonds, used when paranoidDiamonds is true
+				if( blockType == 56 )
+					nonOreCounter.nonDiamondCounter = 0;
+				
 				foundOre = true;
 				break;
 			}
 		}
 		
-		if( !foundOre )
+		if( !foundOre ) {
 			nonOreCounter.counter++;
+			nonOreCounter.nonDiamondCounter++;
+		}
 	}
 
 	public void reloadConfig() {

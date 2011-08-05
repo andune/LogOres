@@ -18,6 +18,10 @@ package org.morganm.logores;
  *
  */
 public class ProcessedEvent {
+	public static final int RATIO_FLAG = 0x01;
+	public static final int NO_LIGHT_FLAG = 0x02;
+	public static final int PARANOID_DIAMOND_FLAG = 0x04;
+	
 	// the original logEvent which contains important info to be logged
 	public LogEvent logEvent;
 	
@@ -27,6 +31,10 @@ public class ProcessedEvent {
 	// if lightLevel was logged (0-15), it's here.  Note that -1 will indicate
 	// that no lightLevel was logged, in the event lightLevel logging is turned off.
 	public int lightLevel = -1;
+	
+	// the total number of flagged events we've accumulated this session (session referring
+	// to the last time since the plugin was reloaded, usually the last server reboot)
+	public int flagCount;
 	
 	// the amount of time (in seconds) that have elapsed since the previous ore break
 	public long time;
@@ -41,9 +49,9 @@ public class ProcessedEvent {
 	// if this is a new ore cluster, the distance from the previous ore cluster
 	// is stored here
 	public double distance;
-	
-	// whether or not this event has tripped the defined flag ratio
-	public boolean isFlagged = false;
+
+	// bitmask of flag reasons for this event, if any
+	public int flagReasons = 0;
 	
 	// whether or not this event has been determined to be in a cave
 	public boolean isInCave = false;
@@ -56,5 +64,15 @@ public class ProcessedEvent {
 		this.logEvent = logEvent;
 	}
 	
+	public boolean isFlagged() {
+		return flagReasons != 0;
+	}
 	
+	public boolean isRatioFlagged() {
+		return (flagReasons & RATIO_FLAG) != 0;
+	}
+	
+	public boolean isLightFlagged() {
+		return (flagReasons & NO_LIGHT_FLAG) != 0;
+	}
 }

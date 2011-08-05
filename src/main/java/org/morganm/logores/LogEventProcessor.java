@@ -14,6 +14,7 @@ import org.bukkit.block.BlockFace;
 import org.bukkit.block.BlockState;
 import org.bukkit.entity.Player;
 import org.morganm.logores.Logger.EventLogger;
+import org.morganm.logores.Logger.ExcelFileLogger;
 import org.morganm.logores.Logger.FileLogger;
 
 /** Class to process LogEvents and turn them into a ProcessedEvent, which will
@@ -35,6 +36,7 @@ public class LogEventProcessor implements Runnable {
 	private LogOresPlugin plugin;
 	private final LogQueue queue;
 	private final HashMap<String, PrevOre> lastOre;
+	private final HashMap<String, PrevOre> lastDiamond;
 	private final HashMap<String, Integer> flaggedViolations;
 	
 	private List<EventLogger> loggers;
@@ -53,6 +55,8 @@ public class LogEventProcessor implements Runnable {
 	private boolean notifyOnFlag = false;
 	private boolean notifyInCaves = false;
 	private boolean logLightLevel = false;
+	private boolean flagWhenZeroLight = false;
+	private boolean isParanoidDiamonds = false;
 	private List<String> notifyIgnoredWorlds;	
 	
 	public LogEventProcessor(LogOresPlugin plugin) {
@@ -62,6 +66,7 @@ public class LogEventProcessor implements Runnable {
 		this.logPrefix = plugin.getLogPrefix();
 		
 		lastOre = new HashMap<String, PrevOre>();
+		lastDiamond = new HashMap<String, PrevOre>();
 		flaggedViolations = new HashMap<String, Integer>();
 	}
 	
@@ -70,7 +75,8 @@ public class LogEventProcessor implements Runnable {
 		minBlocks = plugin.getConfig().getInt("flagging.minBlocks", 10);
 		flagRatio = plugin.getConfig().getInt("flagging.ratio", 250);
 		maxCaveBlocks = plugin.getConfig().getInt("maxCaveBlocks", 0);
-		logLightLevel = plugin.getConfig().getBoolean("logLightLevel", false);
+		logLightLevel = plugin.getConfig().getBoolean("logLightLevel", true);
+		isParanoidDiamonds = plugin.getConfig().getBoolean("paranoidDiamonds", true);
 		
 		// ways to tune out false positives on flagging, all of this defaults to off unless turned
 		// on in the config file
@@ -82,6 +88,7 @@ public class LogEventProcessor implements Runnable {
 		notifyOnFlag = plugin.getConfig().getBoolean("flagging.notify", false);
 		notifyInCaves = plugin.getConfig().getBoolean("flagging.notifyInCaves", false);
 		flagsBeforeNotify = plugin.getConfig().getInt("flagging.flagsBeforeNotify", 3);
+		flagWhenZeroLight = plugin.getConfig().getBoolean("flagging.flagWhenZeroLight", true);
 		
 		notifyIgnoredWorlds = plugin.getConfig().getStringList("flagging.notifyIgnoredWorlds", null);
 		
@@ -94,18 +101,64 @@ public class LogEventProcessor implements Runnable {
 				loggers.add(new FileLogger(plugin).init());
 			}
 			else if( logType.equals("excel") ) {
-				// TODO: write logger
+				loggers.add(new ExcelFileLogger(plugin).init());
 			}
+			/* TODO: write logger
 			else if( logType.equals("database") ) {
-				// TODO: write logger
 			}
+			*/
 			else {
-				log.warning("Ignoring invalid log type "+logType);
+				log.warning(logPrefix + " Ignoring invalid log type "+logType);
 			}
+		}
+		
+		if( logTypes.isEmpty() ) {
+			log.warning(logPrefix + " WARNING: No loggers defined! Using default file logger.");
+			loggers.add(new FileLogger(plugin).init());
 		}
 	}
 	
-	private ProcessedEvent processEvent(LogEvent event, PrevOre prevOre) {
+	/** Given the input parameters, calculate the resulting ratio that goes into the log.
+	 * 
+	 * @param seconds
+	 * @param numBlocks
+	 * @param distance
+	 * @return
+	 */
+	private double calculateRatio(long seconds, int numBlocks, double distance) {
+		double ratio = 0;
+		
+		// if numBlocks is 0, consider it as "1" so we don't divide by zero below - basically
+		// just sets the final divisor to whatever the distance is.
+		double divisor = numBlocks;
+		if( divisor == 0 )
+			divisor = 1;
+		
+		divisor = distance / divisor;
+		
+		if( divisor != 0 && seconds != 0 )
+			ratio = seconds / divisor;
+		
+		return ratio;
+	}
+
+	/** Increment and return the current flagCounter for a given player.
+	 * 
+	 * @param playerName
+	 * @return
+	 */
+	private int incrementFlagCount(String playerName) {
+		Integer flagCount = flaggedViolations.get(playerName);
+		if( flagCount == null )
+			flagCount = Integer.valueOf(0);
+		
+		flagCount = Integer.valueOf(flagCount+1);
+		flaggedViolations.put(playerName, flagCount);
+		
+		return flagCount;
+	}
+	
+	private ProcessedEvent processEvent(LogEvent event, PrevOre prevOre, PrevOre prevDiamond) {
 		ProcessedEvent pe = new ProcessedEvent(event);
 		
 		pe.eventWorld = event.bs.getWorld().getName();
@@ -121,12 +174,12 @@ public class LogEventProcessor implements Runnable {
 			 * 
 			 * Note that because this method is run asynchronously on another thread, it's possible by the
 			 * time we get called, that Bukkit has already replaced the ore block with an air block, thus
-			 * the call above to set the lightLevel to that of the block. If we get a non-zero value for the
+			 * the call above to get the lightLevel of the block. If we get a non-zero value for the
 			 * block that was broken, we just use that and skip the adjacent block check.
 			 */
 			if( lightLevel == 0 ) {
 				for(BlockFace bf : lightFaces) {
-					byte ll = b.getFace(bf).getLightLevel();
+					byte ll = b.getRelative(bf).getLightLevel();
 					if( ll > lightLevel )
 						lightLevel = ll;
 				}
@@ -137,13 +190,14 @@ public class LogEventProcessor implements Runnable {
 		else
 			pe.lightLevel = -1;
 
-		pe.isFlagged = false;
 		pe.isInCave = false;
 		
 		// if the previous ore was on another world, set it to null, we can't compare distances
 		// across worlds, so we ignore this block for the distance/ratio checks
 		if( prevOre != null && !pe.eventWorld.equals(prevOre.bs.getWorld().getName()) )
 			prevOre = null;
+		if( prevDiamond != null && !pe.eventWorld.equals(prevDiamond.bs.getWorld().getName()) )
+			prevDiamond = null;
 		
 		if( prevOre != null ) {
 			pe.distance = event.bs.getBlock().getLocation().distance(prevOre.bs.getBlock().getLocation());
@@ -153,17 +207,7 @@ public class LogEventProcessor implements Runnable {
 				if( pe.time != 0 )
 					pe.time = pe.time / 1000;
 				
-				// if nonOreCounter is 0, consider it as "1" so we don't divide by zero below - basically
-				// just sets the final divisor to whatever the distance is.
-				double divisor = event.nonOreCounter;
-				if( divisor == 0 )
-					divisor = 1;
-				
-				divisor = pe.distance / divisor;
-				
-				pe.ratio = 0;
-				if( divisor != 0 && pe.time != 0 )
-					pe.ratio = pe.time / divisor;
+				pe.ratio = calculateRatio(pe.time, event.nonOreCounter, pe.distance);
 	
 				if( pe.ratio > 0 ) {
 					pe.isNewOreCluster = true;
@@ -175,8 +219,7 @@ public class LogEventProcessor implements Runnable {
 						    (maxFlagDistance == 0 || pe.distance < maxFlagDistance) &&
 						    event.nonOreCounter > minBlocks )
 						{
-							// if we are here, this is a flagged entry, unless the variance checks below change that fact
-							pe.isFlagged = true;
+							boolean inVariance = false;
 							
 							// if allowed variances are defined, check those too
 							if( verticalVariance != 0 || horizontalVariance != 0 ) {
@@ -199,11 +242,22 @@ public class LogEventProcessor implements Runnable {
 //								System.out.println("varianceX = "+varianceX+", varianceZ = "+varianceZ+", varianceY = "+varianceY);
 								// are we in within variance limits?  if so, don't flag this entry
 								if( inHorizontalVariance && inVerticalVariance )
-									pe.isFlagged = false;
+									inVariance = true;
 							}
 							
+							if( !inVariance )
+								pe.flagReasons |= ProcessedEvent.RATIO_FLAG;
+						}
+						
+						if( flagWhenZeroLight && logLightLevel ) {
+							if( pe.lightLevel == 0 ) {
+								pe.flagReasons |= ProcessedEvent.NO_LIGHT_FLAG;
+							}
 						}
 					}
+					
+					if( pe.isFlagged() )
+						pe.flagCount = incrementFlagCount(pe.logEvent.playerName);;
 					
 					// if we've mined less blocks than the distance, it probably indicates we're in a cave with
 					// lots of open space between visible ores.  We use adjusted distance to make sure we don't
@@ -215,6 +269,55 @@ public class LogEventProcessor implements Runnable {
 			}
 		}
 		
+		
+		/* These things must be true in order to enter paranoid diamond checks:
+		 * 
+		 *   - paranoidDiamond flag must be on
+		 *   - we must have had a previous diamond to compare to
+		 *   - the current block being checked must be a diamond
+		 *   - we must not already be flagged "normally" (this is to help distinguish between events
+		 *     that are normally flagged vs. those that are paranoid diamond flagged)
+		 */
+		if( isParanoidDiamonds && prevDiamond != null && event.bs.getTypeId() == 56 && !pe.isFlagged() ) {
+			double distance = event.bs.getBlock().getLocation().distance(prevDiamond.bs.getBlock().getLocation());
+			
+			if( distance > 3 ) {
+				long time = event.time - prevDiamond.time;
+				if( time != 0 )
+					time = time / 1000;
+				
+				double ratio = calculateRatio(time, event.nonDiamondCounter, distance);
+	
+				if( ratio < flagRatio ) {
+					pe.flagReasons |= ProcessedEvent.RATIO_FLAG;
+				
+					// if we get flagged for paranoidDiamonds, then the logged ratio is defined as
+					// the ratio between the two diamonds
+					pe.ratio = ratio;
+				}
+				
+				if( flagWhenZeroLight && logLightLevel ) {
+					if( pe.lightLevel == 0 ) {
+						pe.flagReasons |= ProcessedEvent.NO_LIGHT_FLAG;
+					}
+				}
+				
+				// if we're a flagged entry, then add that the reason we're flagged is because of
+				// the paranoidDiamond setting.
+				if( pe.isFlagged() ) {
+					pe.flagCount = incrementFlagCount(pe.logEvent.playerName);;
+					pe.flagReasons |= ProcessedEvent.PARANOID_DIAMOND_FLAG;
+					
+					// paranoidDiamonds never have cave flag set
+					pe.isInCave = false;
+					
+					// if it's a flagged paranoidDiamonds event, we need to set isNewOreCluster to
+					// true so it will be logged.
+					pe.isNewOreCluster = true;
+				}
+			}
+		}
+		
 		doNotify(pe);
 		
 		return pe;
@@ -222,7 +325,7 @@ public class LogEventProcessor implements Runnable {
 	
 	private void doNotify(ProcessedEvent pe) {
 		// if it's flagged, notify if we're supposed to, unless it's a cave and we're not supposed to
-		if( (notifyOnFlag && pe.isFlagged) && (notifyInCaves || !pe.isInCave) ) {
+		if( (notifyOnFlag && pe.isFlagged()) && (notifyInCaves || !pe.isInCave) ) {
 			boolean ignoreWorld = false;
 			
 			Player oreBreaker = plugin.getServer().getPlayer(pe.logEvent.playerName);
@@ -240,30 +343,33 @@ public class LogEventProcessor implements Runnable {
 			// skip notify if player is on ignored notification list
 			if( (oreBreaker == null || !isIgnoredNotify(oreBreaker)) && !ignoreWorld )
 			{
-				Integer flagCount = flaggedViolations.get(pe.logEvent.playerName);
-				if( flagCount == null )
-					flagCount = Integer.valueOf(0);
-				
-				flagCount = Integer.valueOf(flagCount+1);
-				flaggedViolations.put(pe.logEvent.playerName, flagCount);
-				
-				if( flagCount >= flagsBeforeNotify ) {
-					// TODO: Update to use LogMessage format to format a notify message
-					
-					/*
-					String msg = logMessage + " [flagCount: "+flagCount+"]";
-					if( logFilePerWorld )
-						msg = "[world="+eventWorld+"] "+msg;
+				if( pe.flagCount >= flagsBeforeNotify ) {
+					String msg = FileLogger.getLogString(pe, true);
 					
 					List<Player> notifyPlayers = getNotifyPlayers();
 					for(Player p : notifyPlayers)
 						plugin.sendMessage(p, msg);
-						*/
 				}
 			}
 		}		
 	}
 
+	/** Return the list of players to be notified on a flagged event.
+	 * 
+	 * @return
+	 */
+	private List<Player> getNotifyPlayers() {
+		List<Player> players = new ArrayList<Player>();
+		
+		Player[] onlinePlayers = plugin.getServer().getOnlinePlayers();
+		for(int i=0; i < onlinePlayers.length; i++) {
+			if( plugin.hasPermission(onlinePlayers[i], "logores.notify") )
+				players.add(onlinePlayers[i]);
+		}
+		
+		return players;
+	}
+	
 	/** This method will be called repeatedly every few seconds by the Bukkit Scheduler.
 	 * It will read the block queue until empty and then exit.
 	 * 
@@ -283,19 +389,31 @@ public class LogEventProcessor implements Runnable {
 				event = queue.pop();
 				
 				PrevOre prevOre = lastOre.get(event.playerName);
+				PrevOre prevDiamond = lastDiamond.get(event.playerName);
 
-				ProcessedEvent pe = processEvent(event, prevOre);
+				ProcessedEvent pe = processEvent(event, prevOre, prevDiamond);
 
 				if( prevOre == null ) {
 					prevOre = new PrevOre();
 					lastOre.put(event.playerName, prevOre);
 				}
-
+				
 				// we save CPU by just re-using the same private class rather than creating
 				// a new object every time.
 				prevOre.bs = event.bs;
 				prevOre.time = event.time;
 				
+				// is paranoidDiamond flag on and was it a diamond?
+				if( isParanoidDiamonds && event.bs.getTypeId() == 56 ) {
+					if( prevDiamond == null ) {
+						prevDiamond = new PrevOre();
+						lastDiamond.put(event.playerName, prevDiamond);
+					}
+					
+					prevDiamond.bs = event.bs;
+					prevDiamond.time = event.time;
+				}
+
 				logEvent(pe);
 			}
 			catch(InterruptedException e) {}
@@ -308,6 +426,8 @@ public class LogEventProcessor implements Runnable {
 		if( errors >= MAX_ERRORS ) {
 			log.severe(logPrefix + " LogOre logger gave up after "+MAX_ERRORS+" errors");
 		}
+		
+		flushLoggers();
 
 		running = false;
 	}
@@ -319,6 +439,24 @@ public class LogEventProcessor implements Runnable {
 			}
 			catch(Exception e) {
 				log.warning(logPrefix + " error logging event");
+				e.printStackTrace();
+			}
+		}
+	}
+	
+	private void flushLoggers() {
+		for(EventLogger logger : loggers) {
+			logger.flush();
+		}
+	}
+	
+	public void close() {
+		for(EventLogger logger : loggers) {
+			try {
+				logger.close();
+			}
+			catch(Exception e) {
+				log.warning(logPrefix + " error closing log object");
 				e.printStackTrace();
 			}
 		}

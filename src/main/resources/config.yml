@@ -5,6 +5,13 @@ loggedOres:
 - 15
 - 56
 
+logTypes:
+- file
+#- excel
+#- database
+
+paranoidDiamonds: false
+
 # base name of the logFile. Note ".txt" will be added automatically. Also if
 # you set logFilePerWorld to true, ".world" will be added before ".txt" as
 # well.
@@ -52,6 +59,9 @@ flagging:
   allowedVariance:
     vertical: 3
     horizontal: 2
+
+  # if set to true, mining when light is 0 will trip a flag (only works if logLightLevel is true)
+  flagWhenZeroLight: false
 
   # if notify is true, anyone with the 'logores.notify' permission will be notified on
   # a flagged entry

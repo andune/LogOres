@@ -25,7 +25,7 @@ public class FileLogger implements EventLogger {
 
 	private LogOresPlugin plugin;
 	
-	private boolean logFilePerWorld = false;
+	protected boolean logFilePerWorld = false;
 	private String logFile;
 	
 	private FileWriter writer;
@@ -39,23 +39,18 @@ public class FileLogger implements EventLogger {
 	
 	@Override
 	public EventLogger init() {
-		logFilePerWorld = plugin.getConfig().getBoolean("logFilePerWorld", false); 
 		logFile = plugin.getConfig().getString("logFile", "plugins/LogOres/logOres");
+		
+		logFilePerWorld = plugin.getConfig().getBoolean("logFilePerWorld", false);
+		if( logFilePerWorld )
+			writerPerWorld = new HashMap<String, FileWriter>();
+		
 		return this;
 	}
 	
 	@Override
 	public void logEvent(ProcessedEvent pe) throws Exception {
-		String eventWorld = pe.eventWorld;
-		
-		FileWriter fileWriter = null;
-		if (logFilePerWorld)
-			fileWriter = writerPerWorld.get(eventWorld);
-		else
-			fileWriter = writer;
-
-		if (fileWriter == null)
-			fileWriter = openLogFile(eventWorld);
+		FileWriter fileWriter = getFileWriter(pe.eventWorld);
 
 		String logMessage = FileLogger.getLogString(pe, logFilePerWorld);
 
@@ -65,10 +60,29 @@ public class FileLogger implements EventLogger {
 		} catch (IOException e) {
 			 // ugh terrible code based on implementation message in exception, I know.
 			if (e.getMessage().contains("Stream closed")) {
-				openLogFile(eventWorld);
+				fileWriter = openLogFile(pe.eventWorld);
 				fileWriter.write(dateStamp + logMessage);
 			}
 		}
+	}
+
+	/** Return the FileWriter object to be used, given the world the event is in.
+	 * 
+	 * @param world
+	 * @return
+	 */
+	protected FileWriter getFileWriter(String world) {
+		FileWriter fileWriter = null;
+		
+		if (logFilePerWorld)
+			fileWriter = writerPerWorld.get(world);
+		else
+			fileWriter = writer;
+
+		if (fileWriter == null)
+			fileWriter = openLogFile(world);
+		
+		return fileWriter;
 	}
 	
 	/** Return the logString for a given ProcessedEvent, minus the [datestamp] prefix.  This is used both internal
@@ -79,7 +93,7 @@ public class FileLogger implements EventLogger {
 	 * @return
 	 * @throws Exception
 	 */
-	static public String getLogString(ProcessedEvent pe, boolean includeWorldTag) throws Exception {
+	static public String getLogString(ProcessedEvent pe, boolean includeWorldTag) {
 		StringBuffer sb = new StringBuffer();
 		Formatter formatter = new Formatter(sb, Locale.US);
 
@@ -106,9 +120,19 @@ public class FileLogger implements EventLogger {
 					" [t=%4dsec / (d=%3.0f / b=%4d) = r=%3.1f]", pe.time,
 					pe.distance, pe.logEvent.nonOreCounter, pe.ratio);
 
-			if( pe.isFlagged )
-				sb.append(" [flagged]");
-			else
+			if( pe.isFlagged() ) {
+				sb.append(" [flagged x");
+				sb.append(pe.flagCount);
+				sb.append(";");
+				if( (pe.flagReasons & ProcessedEvent.RATIO_FLAG) != 0 )
+					sb.append(" ratio");
+				if( (pe.flagReasons & ProcessedEvent.NO_LIGHT_FLAG) != 0 )
+					sb.append(" nolight");
+				if( (pe.flagReasons & ProcessedEvent.PARANOID_DIAMOND_FLAG) != 0 )
+					sb.append(" paranoidDiamonds");
+				sb.append("]");
+			}
+			else if( pe.isInVariance )
 				sb.append(" [in variance]");
 
 			if( pe.isInCave )
@@ -119,15 +143,18 @@ public class FileLogger implements EventLogger {
 		
 		return sb.toString();
 	}
-
-	/**
+	/** Called when a logfile doesn't exist and a new one needs to be created. Exists so it
+	 * can be overridden by a subclass.
 	 * 
-	 * @return writer that was opened on success, null on failure
+	 * @param file
 	 */
-	private FileWriter openLogFile(String world) {
-		FileWriter fileWriter = null;
+	protected void createNewFile(File file) throws IOException {
+		file.createNewFile();
+	}
+	
+	protected String getLogFileName(String world) {
 		String fileName = null;
-
+		
 		int txtIndex;
 		if( (txtIndex = logFile.indexOf(".txt")) != -1 ) {
 			logFile = logFile.substring(0, txtIndex);
@@ -140,10 +167,21 @@ public class FileLogger implements EventLogger {
 		else
 			fileName = logFile + "." + world + ".txt";
 		
+		return fileName;
+	}
+	
+	/**
+	 * 
+	 * @return writer that was opened on success, null on failure
+	 */
+	protected FileWriter openLogFile(String world) {
+		FileWriter fileWriter = null;
+		String fileName = getLogFileName(world);
+		
 		try {
 			File file = new File(fileName);
 			if( !file.exists() )
-				file.createNewFile();
+				createNewFile(file);
 			fileWriter = new FileWriter(file, true);		// append
 		}
 		catch(Exception e) {
@@ -180,7 +218,17 @@ public class FileLogger implements EventLogger {
 	
 	@Override
 	public void close() throws IOException {
-		if( writer != null )
-			writer.close();
+		try {
+			if( logFilePerWorld ) {
+				for(FileWriter fileWriter : writerPerWorld.values()) {
+					if( fileWriter != null )
+						fileWriter.close();
+				}
+			}
+			else {
+				if( writer != null )
+					writer.close();
+			}
+		} catch(IOException e) { e.printStackTrace(); }		
 	}
 }

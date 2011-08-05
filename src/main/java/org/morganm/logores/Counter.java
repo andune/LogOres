@@ -11,4 +11,5 @@ package org.morganm.logores;
  */
 public class Counter {
 	public int counter = 0;
+	public int nonDiamondCounter = 0;
 }

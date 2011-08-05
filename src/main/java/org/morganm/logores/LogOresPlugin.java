@@ -47,7 +47,7 @@ public class LogOresPlugin extends JavaPlugin implements JavaConfigPlugin {
 	private LogOresConfig logOresConfig;
 	private LogQueue logQueue;
 	private LogOresBlockListener blockListener;
-	private LogOreLogger oreLogger;
+	private LogEventProcessor oreProcessor;
     private PermissionHandler permissionHandler;
 	
 	public void loadConfig() throws ConfigException, IOException {
@@ -63,8 +63,8 @@ public class LogOresPlugin extends JavaPlugin implements JavaConfigPlugin {
 		
 		if( blockListener != null )
 			blockListener.reloadConfig();
-		if( oreLogger != null )
-			oreLogger.reloadConfig();
+		if( oreProcessor != null )
+			oreProcessor.reloadConfig();
 		
 		if( !firstTime )
 			log.info(logPrefix + " config live reload complete");
@@ -105,24 +105,19 @@ public class LogOresPlugin extends JavaPlugin implements JavaConfigPlugin {
     	
         getServer().getPluginManager().registerEvent(Event.Type.BLOCK_BREAK, blockListener, Priority.Monitor, this);
         
-        oreLogger = new LogOreLogger(this);
-		oreLogger.reloadConfig();
+        oreProcessor = new LogEventProcessor(this);
+		oreProcessor.reloadConfig();
 		
-        getServer().getScheduler().scheduleAsyncDelayedTask(this, oreLogger);
-        
-		WatchDog watchDog = new WatchDog(this);
-        getServer().getScheduler().scheduleAsyncRepeatingTask(this, watchDog, 600, 200);
+        getServer().getScheduler().scheduleAsyncRepeatingTask(this, oreProcessor, 200, 100);
 		
         log.info( logPrefix + " version [" + getDescription().getVersion() + "] loaded" );
 	}
 
 	@Override
 	public void onDisable() {
-		try {
-			getServer().getScheduler().cancelTasks(this);
-			oreLogger.close();
-		} catch(IOException e) { e.printStackTrace(); }
-		
+        log.info( logPrefix + " version [" + getDescription().getVersion() + "] unloading" );
+		getServer().getScheduler().cancelTasks(this);
+		oreProcessor.close();
         log.info( logPrefix + " version [" + getDescription().getVersion() + "] unloaded" );
 	}
 	
@@ -191,7 +186,7 @@ public class LogOresPlugin extends JavaPlugin implements JavaConfigPlugin {
 	public Config getConfig() { return config; }
 	public LogOresConfig getLogOresConfig() { return logOresConfig; }
 	public LogQueue getLogQueue() { return logQueue; }
-	public LogOreLogger getOreLogger() { return oreLogger; }
+	public LogEventProcessor getEventProcessor() { return oreProcessor; }
 	
 	public File getJarFile() {
 		return super.getFile();
