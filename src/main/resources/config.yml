@@ -10,7 +10,7 @@ logTypes:
 #- excel
 #- database
 
-paranoidDiamonds: false
+paranoidDiamonds: true
 
 # base name of the logFile. Note ".txt" will be added automatically. Also if
 # you set logFilePerWorld to true, ".world" will be added before ".txt" as
