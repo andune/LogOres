@@ -1,3 +1,13 @@
+v0.8 - September 10, 2011
+- Small performance improvement in onBlockBreak(); for the majority of mining
+we now only have to do a single if() integer comparison and we're done.
+- Major improvement to cave detection. Plugin now efficiently stores the last
+50 blocks a player has mined in a circular buffer. When doing a cave check
+(which happens in a separate thread, not on main Bukkit thread), it now checks
+nearby air blocks against the player's recently mined blocks to determine if
+they are in a cave or a player-mined tunnel. This results in significantly
+more accurate cave detection and therefore less false positives.
+
 v0.7 - August 4, 2011
 -Refactored code to support multiple loggers, defined using "logTypes" config
 param. Will be easy now to add DB logging when I get around to it.

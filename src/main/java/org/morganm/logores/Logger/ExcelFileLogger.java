@@ -91,7 +91,7 @@ public class ExcelFileLogger extends FileLogger implements EventLogger {
 				pe.time, pe.distance, pe.logEvent.nonOreCounter, pe.ratio,
 				
 				flagString.toString(), pe.flagCount,
-				(pe.isInCave ? "[cave?]" : "") +
+				(pe.isInCave ? "[cave]" : "") +
 				(pe.isInVariance ? "[in variance]" : "")
 				);
 

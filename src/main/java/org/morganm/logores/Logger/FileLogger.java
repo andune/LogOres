@@ -136,7 +136,7 @@ public class FileLogger implements EventLogger {
 				sb.append(" [in variance]");
 
 			if( pe.isInCave )
-				sb.append(" [cave?]");
+				sb.append(" [cave]");
 		}
 
 		sb.append("\n");

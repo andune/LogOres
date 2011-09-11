@@ -37,9 +37,13 @@ public class LogOresPlugin extends JavaPlugin implements JavaConfigPlugin {
     private static final String MOD_COLOR = "\u00A7e";
     
 	/* Map to keep track of player non-ore block hits in between block hits.
-	 * 
 	 */
 	public Map<String, Counter> playerNonOreCount;
+	
+	/* Map to keep track of recent player block breaks in an efficient manner, for
+	 * aid in detecting caves.
+	 */
+	public Map<String, RecentBlocks> playerRecentBlocks; 
 	
 	private String logPrefix;
 	private String pluginName;
@@ -79,6 +83,7 @@ public class LogOresPlugin extends JavaPlugin implements JavaConfigPlugin {
 		boolean loadError = false;
 		
 		playerNonOreCount = new HashMap<String, Counter>(); 
+		playerRecentBlocks = new HashMap<String, RecentBlocks>();
 		
     	pluginName = getDescription().getName();
     	logPrefix = "[" + pluginName + "]";
