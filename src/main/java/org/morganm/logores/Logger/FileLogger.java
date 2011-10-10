@@ -30,6 +30,8 @@ public class FileLogger implements EventLogger {
 	
 	private FileWriter writer;
 	private HashMap<String, FileWriter> writerPerWorld;
+	private String mysqlEnable;
+	private DatabaseLogger mysqlConn;
 	
 	public FileLogger(LogOresPlugin plugin) {
 		this.plugin = plugin;
@@ -39,29 +41,59 @@ public class FileLogger implements EventLogger {
 	
 	@Override
 	public EventLogger init() {
+		mysqlEnable = plugin.getConfig().getString("mysqlEnable", "false");
+		
+		if(mysqlEnable == "true") {
+			String host = plugin.getConfig().getString("host", "localhost");
+			String database = plugin.getConfig().getString("database", "logores");
+			String user = plugin.getConfig().getString("user", "root");
+			String password = plugin.getConfig().getString("password", "f1ngerfood");
+			mysqlConn = new DatabaseLogger(host,database,user,password);
+		} else {
 		logFile = plugin.getConfig().getString("logFile", "plugins/LogOres/logOres");
 		
 		logFilePerWorld = plugin.getConfig().getBoolean("logFilePerWorld", false);
 		if( logFilePerWorld )
 			writerPerWorld = new HashMap<String, FileWriter>();
-		
+		}
 		return this;
 	}
 	
 	@Override
 	public void logEvent(ProcessedEvent pe) throws Exception {
-		FileWriter fileWriter = getFileWriter(pe.eventWorld);
-
-		String logMessage = FileLogger.getLogString(pe, logFilePerWorld);
-
-		String dateStamp = "[" + new Date().toString() + "] ";
-		try {
-			fileWriter.write(dateStamp + logMessage);
-		} catch (IOException e) {
-			 // ugh terrible code based on implementation message in exception, I know.
-			if (e.getMessage().contains("Stream closed")) {
-				fileWriter = openLogFile(pe.eventWorld);
+		if(mysqlEnable == "true") {
+			String flagged = "";
+			if( pe.isFlagged() ) {
+				flagged = "[flagged x"+pe.flagCount+";";
+				if( (pe.flagReasons & ProcessedEvent.RATIO_FLAG) != 0 )
+					flagged = flagged+" ratio";
+				//if( (pe.flagReasons & ProcessedEvent.NO_LIGHT_FLAG) != 0 )
+				if(pe.lightLevel == 0)
+					flagged = flagged+" nolight";
+				if( (pe.flagReasons & ProcessedEvent.PARANOID_DIAMOND_FLAG) != 0 )
+					flagged = flagged+" paranoidDiamonds";
+				flagged = flagged+"]";
+			}
+			
+			if( pe.isInCave )
+				flagged = flagged+" [cave]";
+			String ratio = String.valueOf(pe.ratio);
+			mysqlConn.newLogEvent(new Date().toString(), pe.logEvent.playerName.toString(), pe.logEvent.bs.getData().getItemType().toString(),(int) pe.logEvent.bs.getX(), (int) pe.logEvent.bs.getY(), (int) pe.logEvent.bs.getZ(), pe.lightLevel, pe.eventWorld.toString(),pe.time+"sec",(int) pe.distance, pe.logEvent.nonOreCounter,ratio, flagged);
+			
+		} else {
+			FileWriter fileWriter = getFileWriter(pe.eventWorld);
+	
+			String logMessage = FileLogger.getLogString(pe, logFilePerWorld);
+	
+			String dateStamp = "[" + new Date().toString() + "] ";
+			try {
 				fileWriter.write(dateStamp + logMessage);
+			} catch (IOException e) {
+				 // ugh terrible code based on implementation message in exception, I know.
+				if (e.getMessage().contains("Stream closed")) {
+					fileWriter = openLogFile(pe.eventWorld);
+					fileWriter.write(dateStamp + logMessage);
+				}
 			}
 		}
 	}
@@ -218,6 +250,9 @@ public class FileLogger implements EventLogger {
 	
 	@Override
 	public void close() throws IOException {
+		if(mysqlEnable == "true") {
+			mysqlConn.connClose();
+		}
 		try {
 			if( logFilePerWorld ) {
 				for(FileWriter fileWriter : writerPerWorld.values()) {
@@ -229,6 +264,7 @@ public class FileLogger implements EventLogger {
 				if( writer != null )
 					writer.close();
 			}
+			
 		} catch(IOException e) { e.printStackTrace(); }		
 	}
 }
