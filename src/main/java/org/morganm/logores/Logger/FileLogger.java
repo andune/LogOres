@@ -30,7 +30,7 @@ public class FileLogger implements EventLogger {
 	
 	private FileWriter writer;
 	private HashMap<String, FileWriter> writerPerWorld;
-	private String mysqlEnable;
+	private boolean mysqlEnable = false;
 	private DatabaseLogger mysqlConn;
 	
 	public FileLogger(LogOresPlugin plugin) {
@@ -41,15 +41,20 @@ public class FileLogger implements EventLogger {
 	
 	@Override
 	public EventLogger init() {
-		mysqlEnable = plugin.getConfig().getString("mysqlEnable", "false");
+		if(plugin.getConfig().getString("mysqlEnable", "false").equals("true")){
+			mysqlEnable = true;
+		}
 		
-		if(mysqlEnable == "true") {
+		if(mysqlEnable) {
 			String host = plugin.getConfig().getString("host", "localhost");
 			String database = plugin.getConfig().getString("database", "logores");
 			String user = plugin.getConfig().getString("user", "root");
 			String password = plugin.getConfig().getString("password", "f1ngerfood");
 			mysqlConn = new DatabaseLogger(host,database,user,password);
-		} else {
+			// fallback
+			mysqlEnable = mysqlConn.getStatus();
+		}
+		if(!mysqlEnable){
 		logFile = plugin.getConfig().getString("logFile", "plugins/LogOres/logOres");
 		
 		logFilePerWorld = plugin.getConfig().getBoolean("logFilePerWorld", false);
@@ -61,7 +66,7 @@ public class FileLogger implements EventLogger {
 	
 	@Override
 	public void logEvent(ProcessedEvent pe) throws Exception {
-		if(mysqlEnable == "true") {
+		if(mysqlEnable) {
 			String flagged = "";
 			if( pe.isFlagged() ) {
 				flagged = "[flagged x"+pe.flagCount+";";
@@ -250,9 +255,9 @@ public class FileLogger implements EventLogger {
 	
 	@Override
 	public void close() throws IOException {
-		if(mysqlEnable == "true") {
+		if(mysqlEnable) {
 			mysqlConn.connClose();
-		}
+		} else {
 		try {
 			if( logFilePerWorld ) {
 				for(FileWriter fileWriter : writerPerWorld.values()) {
@@ -266,5 +271,6 @@ public class FileLogger implements EventLogger {
 			}
 			
 		} catch(IOException e) { e.printStackTrace(); }		
+		}
 	}
 }
