@@ -13,6 +13,7 @@ import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.block.BlockState;
 import org.bukkit.entity.Player;
+import org.morganm.logores.Logger.DatabaseLogger;
 import org.morganm.logores.Logger.EventLogger;
 import org.morganm.logores.Logger.ExcelFileLogger;
 import org.morganm.logores.Logger.FileLogger;
@@ -116,10 +117,9 @@ public class LogEventProcessor implements Runnable {
 			else if( logType.equals("excel") ) {
 				loggers.add(new ExcelFileLogger(plugin).init());
 			}
-			/* TODO: write logger
-			else if( logType.equals("database") ) {
+			else if( logType.equals("mysql") ) {
+				loggers.add(new DatabaseLogger(plugin).init());
 			}
-			*/
 			else {
 				log.warning(logPrefix + " Ignoring invalid log type "+logType);
 			}

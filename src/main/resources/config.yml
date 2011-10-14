@@ -8,16 +8,16 @@ loggedOres:
 logTypes:
 - file
 #- excel
-#- database
+#- mysql
 
 paranoidDiamonds: true
 
-# Database Setup
-mysqlEnable: true
-host: localhost
-database: logores
-user: root
-password: mydatabasepassword
+# MySQL Setup (only used if mysql is enabled as a logType above)
+mysql:
+  host: localhost
+  database: logores
+  user: root
+  password: mydatabasepassword
 
 
 # base name of the logFile. Note ".txt" will be added automatically. Also if
