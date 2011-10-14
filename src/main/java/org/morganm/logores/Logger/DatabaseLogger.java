@@ -28,6 +28,23 @@ public class DatabaseLogger implements EventLogger {
 		this.log = plugin.getLogger();
 		this.logPrefix = plugin.getLogPrefix();
 	}
+	
+	private void connect() {
+        String host = plugin.getConfig().getString("mysql.host");
+		String database = plugin.getConfig().getString("mysql.database");
+		String user = plugin.getConfig().getString("mysql.user");
+		String password = plugin.getConfig().getString("mysql.password");
+		
+
+        try {
+			conn = DriverManager.getConnection("jdbc:mysql://"+host+"/"+database+"?user="+user+"&password="+password);
+		} catch (SQLException ex) {
+        	status = false;
+        	log.info(logPrefix + " Cannot connect to mysql database");
+        	ex.printStackTrace();
+        }
+
+	}
 
 	public boolean getStatus() {
 		return status;
@@ -36,14 +53,9 @@ public class DatabaseLogger implements EventLogger {
 	@Override
 	public EventLogger init() {
 		try {
-			String host = plugin.getConfig().getString("mysql.host");
-			String database = plugin.getConfig().getString("mysql.database");
-			String user = plugin.getConfig().getString("mysql.user");
-			String password = plugin.getConfig().getString("mysql.password");
-			
             Class.forName("com.mysql.jdbc.Driver").newInstance();
-            conn = DriverManager.getConnection("jdbc:mysql://"+host+"/"+database+"?user="+user+"&password="+password);
-            if(conn.isValid(0)){
+            connect();
+            if(conn.isValid(20)){
 			try {
 				System.out.println("[Logores] MySQL-Connection established");
 				stmt = conn.createStatement();
@@ -81,7 +93,7 @@ public class DatabaseLogger implements EventLogger {
             }
         } catch (Exception ex) {
         	status = false;
-        	log.info(logPrefix + " Cannot connect to mySql database");
+        	log.info(logPrefix + " MySQL Error");
         	ex.printStackTrace();
         }
 		
@@ -101,12 +113,6 @@ public class DatabaseLogger implements EventLogger {
 
 	@Override
 	public void logEvent(ProcessedEvent pe) throws Exception {
-		// TODO: this method should be able to handle re-opening the SQL connection in the event that
-		// it finds it gets closed.
-		// TODO: this probably should be updated to use a preparedStatement as the performance will
-		// be much better.
-		
-		
 		// morganm: DRY violation, this code exists in FileLogger as well, I should probably
 		// refactor it into a base class or utility class. For now, laziness wins.
 		String flagged = "";
@@ -126,6 +132,12 @@ public class DatabaseLogger implements EventLogger {
 			flagged = flagged+" [cave]";
 		
 		try {
+			// Reconnect 
+			if(!conn.isValid(20)) {
+				connect();	
+			}
+			// TODO: this probably should be updated to use a preparedStatement as the performance will
+			// be much better.
 			stmt = conn.createStatement();
 			stmt.execute("INSERT INTO logores_log (date, username, ore, x, y, z, light, world, t, d, b, ratio, flagged) "
 					+ "VALUES ("
