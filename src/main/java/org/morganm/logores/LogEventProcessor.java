@@ -5,9 +5,7 @@ package org.morganm.logores;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 import java.util.logging.Logger;
 
 import org.bukkit.Location;
@@ -60,6 +58,7 @@ public class LogEventProcessor implements Runnable {
 	private int minDistance;
 	private int minBlocks;
 	private int flagRatio;
+	@SuppressWarnings("unused")
 	private int maxCaveBlocks;
 	private int maxFlagTime;
 	private int maxFlagDistance;

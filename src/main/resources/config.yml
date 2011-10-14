@@ -12,6 +12,14 @@ logTypes:
 
 paranoidDiamonds: true
 
+# Database Setup
+mysqlEnable: true
+host: localhost
+database: logores
+user: root
+password: mydatabasepassword
+
+
 # base name of the logFile. Note ".txt" will be added automatically. Also if
 # you set logFilePerWorld to true, ".world" will be added before ".txt" as
 # well.
