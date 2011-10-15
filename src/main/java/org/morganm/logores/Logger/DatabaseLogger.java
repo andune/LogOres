@@ -65,8 +65,8 @@ public class DatabaseLogger implements EventLogger {
 						",`username` varchar(50) NOT NULL" +
 						",`ore` varchar(50) NOT NULL" +
 						",`x` MEDIUMINT unsigned NOT NULL" +
-						",`y` MEDIUMINT unsigned NOT " +
-						",`z` MEDIUMINT unsigned NOT " +
+						",`y` MEDIUMINT unsigned NOT NULL" +
+						",`z` MEDIUMINT unsigned NOT NULL" +
 						",`light` TINYINT NOT NULL" +
 						",`world` varchar(50) NOT NULL" +
 						",`t` MEDIUMINT NOT NULL" +
@@ -154,7 +154,7 @@ public class DatabaseLogger implements EventLogger {
 			stmt.close();
 			} catch (SQLException e) {
 			// TODO Auto-generated catch block
-			e.printStackTrace();
+				log.info(logPrefix + " MySQL: Insert Failed");
 			} finally {
 				    if (stmt != null) {
 				        try {
