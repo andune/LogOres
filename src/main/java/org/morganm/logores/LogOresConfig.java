@@ -1,13 +1,13 @@
 /**
  * 
  */
-package org.morganm.logores.config;
+package org.morganm.logores;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Logger;
 
-import org.morganm.logores.LogOresPlugin;
+import org.bukkit.configuration.file.FileConfiguration;
 
 /** Config object with some logic specific to LogOresPlugin which does some processing
  * of the config file to generate specific data we need to operate the plugin.
@@ -31,11 +31,11 @@ public class LogOresConfig {
 	/** Should be called after the config file is loaded, it will do the processing of
 	 * config parameters into the data we need.
 	 */
-	public void processConfig() throws ConfigException {
-		Config config = plugin.getConfig();
+	public void processConfig() {
+		FileConfiguration config = plugin.getConfig();
 		
 		List<Integer> ids = new ArrayList<Integer>();
-		List<String> loggedOres = config.getStringList("loggedOres", null);
+		List<String> loggedOres = config.getStringList("loggedOres");
 		for(String s : loggedOres) {
 			try {
 				Integer i = Integer.parseInt(s);
@@ -46,10 +46,10 @@ public class LogOresConfig {
 			}
 		}
 		
-		if( ids.isEmpty() )
-			throw new ConfigException("No ores defined, logIds is empty");
-		
 		logIds = new int[ids.size()];
+		if( ids.isEmpty() )
+			log.severe(logPrefix+" No ores defined, logIds is empty");
+		
 		for(int i=0; i < ids.size(); i++) {
 			logIds[i] = ids.get(i).intValue();
 		}

@@ -1,3 +1,10 @@
+v0.9 - December 22, 2011
+* code fixes for reported Synchronized access errors when used with NoLagg plugin
+* updated Config files to 1.0-style FileConfiguration classes
+* built against RB #1597
+* refactored Permissions checks to use my general Permissions-agnostic code
+* this release includes the logType "mysql", originally written by @Sancta
+
 v0.8 - September 10, 2011
 - Small performance improvement in onBlockBreak(); for the majority of mining
 we now only have to do a single if() integer comparison and we're done.

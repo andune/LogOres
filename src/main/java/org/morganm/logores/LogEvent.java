@@ -3,6 +3,7 @@
  */
 package org.morganm.logores;
 
+import org.bukkit.Location;
 import org.bukkit.block.BlockState;
 
 /** Just a container for log event data that we capture.  Note that this class exists since
@@ -15,15 +16,18 @@ import org.bukkit.block.BlockState;
  *
  */
 public class LogEvent {
-	public String playerName;
-	public BlockState bs;
-	public long time;
-	public int nonOreCounter;
-	public int nonDiamondCounter;
+	public final String playerName;
+	public final BlockState bs;
+	public final long time;
+	public final int nonOreCounter;
+	public final int nonDiamondCounter;
+	public final Location location;
 	
-	public LogEvent(String playerName, BlockState bs, long time, int nonOreCounter, int nonDiamondCounter) {
+	public LogEvent(final String playerName, final BlockState bs, final Location location,
+			final long time, final int nonOreCounter, final int nonDiamondCounter) {
 		this.playerName = playerName;
 		this.bs = bs;
+		this.location = location;
 		this.time = time;
 		this.nonOreCounter = nonOreCounter;
 		this.nonDiamondCounter = nonDiamondCounter;

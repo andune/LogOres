@@ -85,3 +85,18 @@ flagging:
   #notifyIgnoredWorlds:
   #- world1
   #- world2
+
+# This defines which permission system LogOres uses. Vault and WEPIF
+# (WEPIF is built into WorldEdit) are preferred, they both provide
+# a nice interface to all other permission systems. If you don't have
+# or don't want to use either of those, there is some native support
+# for a few other permission systems that you can use. These are
+# checked in the order they are listed for existence and the
+# first one to match is used.
+permissions:
+  - vault
+  - wepif
+  - pex
+  - perm2-compat
+  - superperms
+  - ops

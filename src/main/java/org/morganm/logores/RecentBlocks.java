@@ -11,9 +11,9 @@ public class RecentBlocks {
 	public final static int MAX_BLOCKS = 50;
 	
 	public String playerName;
-	// RecentBlocks are stored in a circular queue.  This avoids overhead from new
+	// RecentBlocks are stored in a circular buffer.  This avoids overhead from new
 	// object allocation on every block break, since we simple store X recent blocks
-	// and rotate the head around the circular queue, so no new object allocations
+	// and rotate the head around the circular buffer, so no new object allocations
 	// take place as recentBlocks are recorded here.
 	public RecentBlock[] recentBlocks = new RecentBlock[MAX_BLOCKS];
 	public int head = 0;

@@ -4,33 +4,23 @@
 package org.morganm.logores;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.logging.Logger;
 
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
-import org.bukkit.command.ConsoleCommandSender;
-import org.bukkit.entity.Player;
 import org.bukkit.event.Event;
 import org.bukkit.event.Event.Priority;
-import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.morganm.logores.config.Config;
-import org.morganm.logores.config.ConfigException;
-import org.morganm.logores.config.ConfigFactory;
-import org.morganm.logores.config.JavaConfigPlugin;
-import org.morganm.logores.config.LogOresConfig;
-
-import com.nijiko.permissions.PermissionHandler;
-import com.nijikokun.bukkit.Permissions.Permissions;
+import org.morganm.logores.util.JarUtils;
+import org.morganm.logores.util.PermissionSystem;
 
 /**
  * @author morganm
  *
  */
-public class LogOresPlugin extends JavaPlugin implements JavaConfigPlugin {
+public class LogOresPlugin extends JavaPlugin {
 	public static final Logger log = Logger.getLogger(LogOresPlugin.class.toString());
 	
 	// yellow
@@ -47,13 +37,40 @@ public class LogOresPlugin extends JavaPlugin implements JavaConfigPlugin {
 	
 	private String logPrefix;
 	private String pluginName;
-	private Config config;
+//	private FileConfiguration config;
 	private LogOresConfig logOresConfig;
 	private LogQueue logQueue;
 	private LogOresBlockListener blockListener;
 	private LogEventProcessor oreProcessor;
-    private PermissionHandler permissionHandler;
+	private PermissionSystem perm;
+	private JarUtils jarUtil;
+	private int buildNumber = -1;
+    private boolean configLoaded = false;
 	
+    public void loadConfig() {
+    	// copy default config.yml into place if it's not there
+		File file = new File(getDataFolder(), "config.yml");
+		if( !file.exists() ) {
+			jarUtil.copyConfigFromJar("config.yml", file);
+		}
+		
+    	if( !configLoaded ) {
+	    	super.getConfig();
+	    	configLoaded = true;
+    	}
+    	else
+    		super.reloadConfig();
+    	
+		logOresConfig = new LogOresConfig(this);
+		logOresConfig.processConfig();
+
+		if( blockListener != null )
+			blockListener.reloadConfig();
+		if( oreProcessor != null )
+			oreProcessor.reloadConfig();
+    }
+    
+    /*
 	public void loadConfig() throws ConfigException, IOException {
 		boolean firstTime = true;
 		if( config != null )
@@ -73,14 +90,17 @@ public class LogOresPlugin extends JavaPlugin implements JavaConfigPlugin {
 		if( !firstTime )
 			log.info(logPrefix + " config live reload complete");
 	}
+	*/
 	
 	public void shutdownPlugin() {
-		getServer().getPluginManager().disablePlugin(this);		
+		getServer().getPluginManager().disablePlugin(this);
 	}
 	
 	@Override
 	public void onEnable() {
 		boolean loadError = false;
+		jarUtil = new JarUtils(this, getFile(), log, logPrefix);
+		buildNumber = jarUtil.getBuildNumber();
 		
 		playerNonOreCount = new HashMap<String, Counter>(); 
 		playerRecentBlocks = new HashMap<String, RecentBlocks>();
@@ -115,15 +135,14 @@ public class LogOresPlugin extends JavaPlugin implements JavaConfigPlugin {
 		
         getServer().getScheduler().scheduleAsyncRepeatingTask(this, oreProcessor, 200, 100);
 		
-        log.info( logPrefix + " version [" + getDescription().getVersion() + "] loaded" );
+		log.info(logPrefix + "version "+getDescription().getVersion()+", build "+buildNumber+" is enabled");
 	}
 
 	@Override
 	public void onDisable() {
-        log.info( logPrefix + " version [" + getDescription().getVersion() + "] unloading" );
 		getServer().getScheduler().cancelTasks(this);
 		oreProcessor.close();
-        log.info( logPrefix + " version [" + getDescription().getVersion() + "] unloaded" );
+		log.info(logPrefix + "version "+getDescription().getVersion()+", build "+buildNumber+" is disabled");
 	}
 	
 	@Override
@@ -159,25 +178,12 @@ public class LogOresPlugin extends JavaPlugin implements JavaConfigPlugin {
      * 
      */
     private void initPermissions() {
-        Plugin permissionsPlugin = getServer().getPluginManager().getPlugin("Permissions");
-        if( permissionsPlugin != null )
-        	permissionHandler = ((Permissions) permissionsPlugin).getHandler();
-        else
-	    	log.warning(logPrefix+" Permissions system not enabled, using isOP instead.");
+		perm = new PermissionSystem(this, log, logPrefix);
+		perm.setupPermissions();
     }
     
     public boolean hasPermission(CommandSender sender, String permissionNode) {
-		if( sender instanceof ConsoleCommandSender )
-			return true;
-		
-		if( sender instanceof Player ) {
-	    	if( permissionHandler != null ) 
-	    		return permissionHandler.has((Player) sender, permissionNode);
-	    	else
-	    		return sender.isOp();
-		}
-		
-		return false;
+    	return perm.has(sender, permissionNode);
     }
 	
 	/** Write a mod message to the target, using our preferred color.
@@ -188,7 +194,7 @@ public class LogOresPlugin extends JavaPlugin implements JavaConfigPlugin {
 		target.sendMessage(MOD_COLOR + message);
 	}
 	
-	public Config getConfig() { return config; }
+//	public Config getLOConfig() { return config; }
 	public LogOresConfig getLogOresConfig() { return logOresConfig; }
 	public LogQueue getLogQueue() { return logQueue; }
 	public LogEventProcessor getEventProcessor() { return oreProcessor; }
@@ -197,12 +203,10 @@ public class LogOresPlugin extends JavaPlugin implements JavaConfigPlugin {
 		return super.getFile();
 	}
 	
-	@Override
 	public String getLogPrefix() {
 		return logPrefix;
 	}
 
-	@Override
 	public Logger getLogger() {
 		return log;
 	}

@@ -45,7 +45,7 @@ public class DatabaseLogger implements EventLogger {
             conn = DriverManager.getConnection("jdbc:mysql://"+host+"/"+database+"?user="+user+"&password="+password);
             if(conn.isValid(0)){
 			try {
-				System.out.println("[Logores] MySQL-Connection established");
+				log.info(logPrefix + " MySQL-Connection established");
 				stmt = conn.createStatement();
 				stmt.execute("CREATE TABLE IF NOT EXISTS `logores_log` (" +
 						"`id` INT unsigned NOT NULL AUTO_INCREMENT" +

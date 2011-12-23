@@ -104,12 +104,12 @@ public class LogEventProcessor implements Runnable {
 		flagsBeforeNotify = plugin.getConfig().getInt("flagging.flagsBeforeNotify", 3);
 		flagWhenZeroLight = plugin.getConfig().getBoolean("flagging.flagWhenZeroLight", true);
 		
-		notifyIgnoredWorlds = plugin.getConfig().getStringList("flagging.notifyIgnoredWorlds", null);
+		notifyIgnoredWorlds = plugin.getConfig().getStringList("flagging.notifyIgnoredWorlds");
 		
 		// TODO: need to flush existing loggers before we load new ones
 		
 		loggers = new ArrayList<EventLogger>();
-		List<String> logTypes = plugin.getConfig().getStringList("logTypes", null);
+		List<String> logTypes = plugin.getConfig().getStringList("logTypes");
 		for(String logType : logTypes) {
 			if( logType.equals("file") ) {
 				loggers.add(new FileLogger(plugin).init());
@@ -177,8 +177,7 @@ public class LogEventProcessor implements Runnable {
 		pe.eventWorld = event.bs.getWorld().getName();
 		
 		if( logLightLevel ) {
-			Block b = event.bs.getBlock();
-			byte lightLevel = b.getLightLevel();
+			byte lightLevel = event.bs.getLightLevel();
 
 			/* In MineCraft, you have to calculate the lightLevel of a solid block (such as ore) by looking
 			 * at the lightLevel of adjacent blocks (primarily air blocks, in the case of underground mining).
@@ -191,6 +190,9 @@ public class LogEventProcessor implements Runnable {
 			 * block that was broken, we just use that and skip the adjacent block check.
 			 */
 			if( lightLevel == 0 ) {
+				Block b = event.bs.getBlock();	// this *could* throw Bukkit threading exception since
+												// it is async Block access. But this code should rarely
+												// be used, since the above check works 99% of the time.
 				for(BlockFace bf : lightFaces) {
 					byte ll = b.getRelative(bf).getLightLevel();
 					if( ll > lightLevel )
@@ -213,7 +215,7 @@ public class LogEventProcessor implements Runnable {
 			prevDiamond = null;
 		
 		if( prevOre != null ) {
-			pe.distance = event.bs.getBlock().getLocation().distance(prevOre.bs.getBlock().getLocation());
+			pe.distance = event.location.distance(prevOre.location);
 			
 			if( pe.distance > minDistance ) {		
 				pe.time = event.time - prevOre.time;
@@ -239,8 +241,8 @@ public class LogEventProcessor implements Runnable {
 								boolean inHorizontalVariance = false;
 								boolean inVerticalVariance = false;
 								
-								Location blockLocation = event.bs.getBlock().getLocation();
-								Location prevBlockLocation = prevOre.bs.getBlock().getLocation();
+								Location blockLocation = event.location;
+								Location prevBlockLocation = prevOre.location;
 								
 								int varianceX = blockLocation.getBlockX() - prevBlockLocation.getBlockX();
 								int varianceZ = blockLocation.getBlockZ() - prevBlockLocation.getBlockZ();
@@ -296,7 +298,7 @@ public class LogEventProcessor implements Runnable {
 		 *     that are normally flagged vs. those that are paranoid diamond flagged)
 		 */
 		if( isParanoidDiamonds && prevDiamond != null && event.bs.getTypeId() == 56 && !pe.isFlagged() ) {
-			double distance = event.bs.getBlock().getLocation().distance(prevDiamond.bs.getBlock().getLocation());
+			double distance = event.location.distance(prevDiamond.location);
 			
 			if( distance > 3 ) {
 				long time = event.time - prevDiamond.time;
@@ -549,6 +551,7 @@ public class LogEventProcessor implements Runnable {
 				// a new object every time.
 				prevOre.bs = event.bs;
 				prevOre.time = event.time;
+				prevOre.location = event.location;
 				
 				// is paranoidDiamond flag on and was it a diamond?
 				if( isParanoidDiamonds && event.bs.getTypeId() == 56 ) {
@@ -559,6 +562,7 @@ public class LogEventProcessor implements Runnable {
 					
 					prevDiamond.bs = event.bs;
 					prevDiamond.time = event.time;
+					prevDiamond.location = event.location;
 				}
 
 				logEvent(pe);
@@ -617,6 +621,7 @@ public class LogEventProcessor implements Runnable {
 	 */
 	private class PrevOre {
 		BlockState bs;
+		Location location;
 		long time;
 	}
 }

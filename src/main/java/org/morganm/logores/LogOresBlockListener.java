@@ -77,7 +77,7 @@ public class LogOresBlockListener extends BlockListener {
 			for(int i=0; i < logOres.length; i++) {
 	//			System.out.println("Checking blockType "+blockType+" against "+logOres[i]);
 				if( blockType == logOres[i] ) {
-					logQueue.push(new LogEvent(playerName, event.getBlock().getState(),
+					logQueue.push(new LogEvent(playerName, event.getBlock().getState(), event.getBlock().getLocation(),
 							System.currentTimeMillis(), nonOreCounter.counter, nonOreCounter.nonDiamondCounter));
 					nonOreCounter.counter = 0;	// reset non-ore counter
 					
