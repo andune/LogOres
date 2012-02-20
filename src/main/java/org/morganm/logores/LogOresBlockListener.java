@@ -4,15 +4,17 @@
 package org.morganm.logores;
 
 import org.bukkit.block.Block;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
+import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
-import org.bukkit.event.block.BlockListener;
 import org.morganm.logores.RecentBlocks.RecentBlock;
 
 /**
  * @author morganm
  *
  */
-public class LogOresBlockListener extends BlockListener {
+public class LogOresBlockListener implements Listener {
 	private static final int MIN_BLOCK_ID = 13;
 	
 	private LogOresPlugin plugin;
@@ -24,7 +26,7 @@ public class LogOresBlockListener extends BlockListener {
 		this.logQueue = plugin.getLogQueue();
 	}
 	
-	@Override
+	@EventHandler(priority = EventPriority.MONITOR)
 	public void onBlockBreak(BlockBreakEvent event) {
 		if (event.isCancelled())
 			return;

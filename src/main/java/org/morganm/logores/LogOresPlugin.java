@@ -10,8 +10,6 @@ import java.util.logging.Logger;
 
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
-import org.bukkit.event.Event;
-import org.bukkit.event.Event.Priority;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.morganm.logores.util.JarUtils;
 import org.morganm.logores.util.PermissionSystem;
@@ -128,7 +126,8 @@ public class LogOresPlugin extends JavaPlugin {
     		return;
     	}
     	
-        getServer().getPluginManager().registerEvent(Event.Type.BLOCK_BREAK, blockListener, Priority.Monitor, this);
+    	getServer().getPluginManager().registerEvents(blockListener, this);
+//        getServer().getPluginManager().registerEvent(Event.Type.BLOCK_BREAK, blockListener, Priority.Monitor, this);
         
         oreProcessor = new LogEventProcessor(this);
 		oreProcessor.reloadConfig();
