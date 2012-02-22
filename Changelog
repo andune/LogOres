@@ -1,3 +1,8 @@
+v1.0 - ?
+* Bukkit R5 event system update
+* WEPIF permission system fixes for WorldEdit 5.1/5.2+
+* "build.number" error fix
+
 v0.9 - December 22, 2011
 * code fixes for reported Synchronized access errors when used with NoLagg plugin
 * updated Config files to 1.0-style FileConfiguration classes
