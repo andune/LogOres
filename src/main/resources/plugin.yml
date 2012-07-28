@@ -1,8 +1,10 @@
-name: LogOres
+name: ${project.name}
 main: org.morganm.logores.LogOresPlugin
-version: 1.0
+url: ${project.url}
+version: ${project.version}
 author: morganm
-database: false
+database: true
+softdepend: [Vault, WorldEdit, Permissions, PermissionsEx]
 commands:
   lo:
     description: Log ores admin functions

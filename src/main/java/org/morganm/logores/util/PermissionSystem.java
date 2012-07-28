@@ -1,9 +1,13 @@
 package org.morganm.logores.util;
 
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Logger;
 
+import net.milkbowl.vault.permission.Permission;
+
+import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.ConsoleCommandSender;
@@ -23,32 +27,47 @@ import com.sk89q.wepif.PermissionsResolverManager;
 
 /** Permission abstraction class, use Vault, WEPIF, Perm2 or superperms, depending on what's available.
  * 
- * Dependencies: (to be handled through maven when I setup a repository some day..)
+ * Dependencies: (handled through maven automatically now)
  *   Vault 1.x: http://dev.bukkit.org/server-mods/vault/
  *   WorldEdit 5.x: http://build.sk89q.com/
  *   PermissionsEx: http://goo.gl/jthCz
  *   Permissions 2.7 or 3.x: http://goo.gl/liHFt (2.7) or http://goo.gl/rn4LP (3.x) 
+ *   
+ * Author's note: The "ideal" design would be to setup an interface class and let each permission
+ *   type implement that interface and use polymorphism. In fact, that's how Vault and WEPIF work.
+ *   However, the design goal for this class is to have a single class I can use between projects
+ *   that implements permissions abstraction, thus the less-than-great C-style integer values,
+ *   switch statements and if/else ladders.
  * 
  * @author morganm
  *
  */
 public class PermissionSystem {
-	// class version: 10
-	public static final int SUPERPERMS = 0x00;		// default
-	public static final int VAULT = 0x01;
-	public static final int WEPIF = 0x02;
-	public static final int PERM2_COMPAT = 0x04;
-	public static final int PEX = 0x08;
-	public static final int OPS = 0x10;
-	
+	// class version: 14
+	public enum Type {
+		SUPERPERMS,
+		VAULT,
+		WEPIF,
+		PERM2_COMPAT,
+		PEX,
+		OPS
+	}
+
+	/** For use by pure superperms systems that have no notion of group, the
+	 * convention is that groups are permissions that start with "group."
+	 * 
+	 */
     private static final String GROUP_PREFIX = "group.";
 
+    /** Singleton instance.
+     * 
+     */
 	private static PermissionSystem instance;
 	
 	private final JavaPlugin plugin;
 	private final Logger log;
 	private final String logPrefix;
-	private int systemInUse;
+	private Type systemInUse;
 	
     private net.milkbowl.vault.permission.Permission vaultPermission = null;
     private PermissionsResolverManager wepifPerms = null;
@@ -75,7 +94,8 @@ public class PermissionSystem {
 	}
 	
 	/** **WARNING** Not your typical singleton pattern, this CAN BE NULL. An instance
-	 * must be created by the plugin before this will return a value.
+	 * must be created by the plugin before this will return a value. This simply
+	 * points to the most recent object that was instantiated.
 	 * 
 	 * @return
 	 */
@@ -83,7 +103,42 @@ public class PermissionSystem {
 		return instance;
 	}
 	
-	public int getSystemInUse() { return systemInUse; }
+	public Type getSystemInUse() { return systemInUse; }
+	
+	public String getSystemInUseString() {
+		switch(systemInUse) {
+		case VAULT:
+	        final String permName = Bukkit.getServer().getServicesManager().getRegistration(Permission.class).getProvider().getName();
+			return "VAULT:"+permName;
+		case WEPIF:
+			String wepifPermInUse = "";
+			try {
+				Class<?> clazz = wepifPerms.getClass();
+				Field field = clazz.getDeclaredField("permissionResolver");
+				field.setAccessible(true);
+				Object o = field.get(wepifPerms);
+				String className = o.getClass().getSimpleName();
+				wepifPermInUse = ":"+className.replace("Resolver", "");
+			}
+			// catch both normal and runtime exceptions
+			catch(Throwable t) {
+				// we don't care, it's just extra information if we can get it
+			}
+			
+			return "WEPIF" + wepifPermInUse;
+		case PERM2_COMPAT:
+			return "PERM2_COMPAT";
+		case PEX:
+			return "PEX";
+		case OPS:
+			return "OPS";
+
+		case SUPERPERMS:
+		default:
+			return "SUPERPERMS";
+		
+		}
+	}
 	
 	public void setupPermissions() {
 		setupPermissions(true);
@@ -106,49 +161,52 @@ public class PermissionSystem {
 		for(String system : permPrefs) {
 			if( "vault".equalsIgnoreCase(system) ) {
 				if( setupVaultPermissions() ) {
-					systemInUse = VAULT;
-					if( verbose )
-						log.info(logPrefix+"using Vault permissions");
+					systemInUse = Type.VAULT;
+//					if( verbose )
+//						log.info(logPrefix+"using Vault permissions");
 					break;
 				}
 			}
 			else if( "wepif".equalsIgnoreCase(system) ) {
 				if( setupWEPIFPermissions() ) {
-					systemInUse = WEPIF;
-					if( verbose )
-						log.info(logPrefix+"using WEPIF permissions");
+					systemInUse = Type.WEPIF;
+//					if( verbose )
+//						log.info(logPrefix+"using WEPIF permissions");
 					break;
 				}
 			}
 			else if( "pex".equalsIgnoreCase(system) ) {
 				if( setupPEXPermissions() ) {
-					systemInUse = PEX;
-					if( verbose )
-						log.info(logPrefix+"using PEX permissions");
+					systemInUse = Type.PEX;
+//					if( verbose )
+//						log.info(logPrefix+"using PEX permissions");
 					break;
 				}
 			}
 			else if( "perm2".equalsIgnoreCase(system) || "perm2-compat".equalsIgnoreCase(system) ) {
 				if( setupPerm2() ) {
-					systemInUse = PERM2_COMPAT;
-					if( verbose )
-						log.info(logPrefix+"using Perm2-compatible permissions");
+					systemInUse = Type.PERM2_COMPAT;
+//					if( verbose )
+//						log.info(logPrefix+"using Perm2-compatible permissions");
 					break;
 				}
 			}
 			else if( "superperms".equalsIgnoreCase(system) ) {
-				systemInUse = SUPERPERMS;
-				if( verbose )
-					log.info(logPrefix+"using Superperms permissions");
+				systemInUse = Type.SUPERPERMS;
+//				if( verbose )
+//					log.info(logPrefix+"using Superperms permissions");
 	        	break;
 			}
 			else if( "ops".equalsIgnoreCase(system) ) {
-				systemInUse = OPS;
-				if( verbose )
-					log.info(logPrefix+"using basic Op check for permissions");
+				systemInUse = Type.OPS;
+//				if( verbose )
+//					log.info(logPrefix+"using basic Op check for permissions");
 	        	break;
 			}
 		}
+		
+		if( verbose )
+			log.info(logPrefix+"using "+getSystemInUseString()+" for permissions");
 	}
 	
     /** Check to see if player has a given permission.
@@ -281,7 +339,7 @@ public class PermissionSystem {
 	/** Superperms has no group support, but we fake it (this is slow and stupid since
 	  * it has to iterate through ALL permissions a player has).  But if you're
 	  * attached to superperms and not using a nice plugin like bPerms and Vault
-	  * then this is as good as it gets)
+	  * then this is as good as it gets.
 	  * 
 	  * @param player
 	  * @return the group name or null
@@ -354,7 +412,7 @@ public class PermissionSystem {
     	try {
 	    	Plugin worldEdit = plugin.getServer().getPluginManager().getPlugin("WorldEdit");
 	    	String version = null;
-	    	int versionNumber = 0;
+	    	int versionNumber = 840;	// assume compliance unless we find otherwise
 	    	
 	    	try {
 		    	version = worldEdit.getDescription().getVersion();

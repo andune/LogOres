@@ -1,4 +1,9 @@
-v1.0 - ?
+v1.1 - Jul 28, 2012
+* merged pull request from @Sancta for DB logging fixes (untested by me & presumed to be working, let me know if you find otherwise)
+* converted to maven for build system to make it easier for other devs to build & contribute
+* updated to latest common Permission code, should fix reported issue with notifications/ops
+
+v1.0 - Mar 5, 2012
 * Bukkit R5 event system update
 * WEPIF permission system fixes for WorldEdit 5.1/5.2+
 * "build.number" error fix
