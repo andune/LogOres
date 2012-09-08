@@ -5,7 +5,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.logging.Logger;
 
-import org.morganm.logores.LogOresPlugin;
+import org.morganm.logores.LogOres;
 import org.morganm.logores.ProcessedEvent;
 
 /** Class originally written by Sancta. Refactored by morganm to remove
@@ -18,12 +18,12 @@ public class DatabaseLogger implements EventLogger {
 	private final Logger log;
 	private final String logPrefix;
 	
-	private LogOresPlugin plugin;
+	private LogOres plugin;
 	private Statement stmt;
 	private Connection conn;
 	private boolean status = true;
 	
-	public DatabaseLogger(LogOresPlugin plugin) {
+	public DatabaseLogger(LogOres plugin) {
 		this.plugin = plugin;
 		this.log = plugin.getLogger();
 		this.logPrefix = plugin.getLogPrefix();

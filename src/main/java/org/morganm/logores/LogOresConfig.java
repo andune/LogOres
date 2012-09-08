@@ -18,11 +18,11 @@ import org.bukkit.configuration.file.FileConfiguration;
 public class LogOresConfig {
 	private final Logger log;
 	private final String logPrefix;
-	private final LogOresPlugin plugin;
+	private final LogOres plugin;
 	
 	private int logIds[];
 	
-	public LogOresConfig(LogOresPlugin plugin) {
+	public LogOresConfig(LogOres plugin) {
 		this.plugin = plugin;
 		this.log = plugin.getLogger();
 		this.logPrefix = plugin.getLogPrefix();

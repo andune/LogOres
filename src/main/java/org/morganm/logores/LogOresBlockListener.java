@@ -17,11 +17,11 @@ import org.morganm.logores.RecentBlocks.RecentBlock;
 public class LogOresBlockListener implements Listener {
 	private static final int MIN_BLOCK_ID = 13;
 	
-	private LogOresPlugin plugin;
+	private LogOres plugin;
 	private LogQueue logQueue;
 	private int[] logOres;
 	
-	public LogOresBlockListener(LogOresPlugin plugin) {
+	public LogOresBlockListener(LogOres plugin) {
 		this.plugin = plugin;
 		this.logQueue = plugin.getLogQueue();
 	}
