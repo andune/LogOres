@@ -6,21 +6,21 @@ package org.morganm.logores;
 import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.logging.Logger;
 
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.morganm.logores.util.JarUtils;
-import org.morganm.logores.util.PermissionSystem;
+import org.morganm.mBukkitLib.Debug;
+import org.morganm.mBukkitLib.JarUtils;
+import org.morganm.mBukkitLib.Logger;
+import org.morganm.mBukkitLib.LoggerImpl;
+import org.morganm.mBukkitLib.PermissionSystem;
 
 /**
  * @author morganm
  *
  */
 public class LogOres extends JavaPlugin {
-	public static final Logger log = Logger.getLogger(LogOres.class.toString());
-	
 	// yellow
     private static final String MOD_COLOR = "\u00A7e";
     
@@ -33,7 +33,7 @@ public class LogOres extends JavaPlugin {
 	 */
 	public Map<String, RecentBlocks> playerRecentBlocks; 
 	
-	private String logPrefix;
+    private Logger log;
 	private String pluginName;
 //	private FileConfiguration config;
 	private LogOresConfig logOresConfig;
@@ -96,15 +96,15 @@ public class LogOres extends JavaPlugin {
 	
 	@Override
 	public void onEnable() {
+	    log = new LoggerImpl(this, new Debug(this, super.getLogger()));
 		boolean loadError = false;
-		jarUtil = new JarUtils(this, getFile(), log, logPrefix);
+		jarUtil = new JarUtils(this, super.getLogger(), getFile());
 		buildNumber = jarUtil.getBuildNumber();
 		
 		playerNonOreCount = new HashMap<String, Counter>(); 
 		playerRecentBlocks = new HashMap<String, RecentBlocks>();
 		
     	pluginName = getDescription().getName();
-    	logPrefix = "[" + pluginName + "]";
     	
 		logQueue = new LogQueue();
     	blockListener = new LogOresBlockListener(this);
@@ -134,14 +134,14 @@ public class LogOres extends JavaPlugin {
 		
         getServer().getScheduler().scheduleAsyncRepeatingTask(this, oreProcessor, 200, 100);
 		
-		log.info(logPrefix + "version "+getDescription().getVersion()+", build "+buildNumber+" is enabled");
+		log.info("version "+getDescription().getVersion()+", build "+buildNumber+" is enabled");
 	}
 
 	@Override
 	public void onDisable() {
 		getServer().getScheduler().cancelTasks(this);
 		oreProcessor.close();
-		log.info(logPrefix + "version "+getDescription().getVersion()+", build "+buildNumber+" is disabled");
+		log.info("version "+getDescription().getVersion()+", build "+buildNumber+" is disabled");
 	}
 	
 	@Override
@@ -177,7 +177,7 @@ public class LogOres extends JavaPlugin {
      * 
      */
     private void initPermissions() {
-		perm = new PermissionSystem(this, log, logPrefix);
+		perm = new PermissionSystem(this, log);
 		perm.setupPermissions();
     }
     
@@ -202,11 +202,7 @@ public class LogOres extends JavaPlugin {
 		return super.getFile();
 	}
 	
-	public String getLogPrefix() {
-		return logPrefix;
-	}
-
-	public Logger getLogger() {
+	public Logger getLog() {
 		return log;
 	}
 }

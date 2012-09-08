@@ -28,7 +28,6 @@ public class LogEventProcessor implements Runnable {
 	private final int MAX_ERRORS = 10;
 	private final Block[] emptyBlockList = new Block[] {};
 	private final Logger log;
-	private final String logPrefix;
 
 	/* This contains the list of BlockFaces we check for light when lightLevel logging is enabled.  
 	 */
@@ -77,7 +76,6 @@ public class LogEventProcessor implements Runnable {
 		this.plugin = plugin;
 		this.queue = plugin.getLogQueue();
 		this.log = plugin.getLogger();
-		this.logPrefix = plugin.getLogPrefix();
 		
 		lastOre = new HashMap<String, PrevOre>();
 		lastDiamond = new HashMap<String, PrevOre>();
@@ -121,12 +119,12 @@ public class LogEventProcessor implements Runnable {
 				loggers.add(new DatabaseLogger(plugin).init());
 			}
 			else {
-				log.warning(logPrefix + " Ignoring invalid log type "+logType);
+				log.warning(" Ignoring invalid log type "+logType);
 			}
 		}
 		
 		if( logTypes.isEmpty() ) {
-			log.warning(logPrefix + " WARNING: No loggers defined! Using default file logger.");
+			log.warning(" WARNING: No loggers defined! Using default file logger.");
 			loggers.add(new FileLogger(plugin).init());
 		}
 	}
@@ -575,7 +573,7 @@ public class LogEventProcessor implements Runnable {
 		}
 		
 		if( errors >= MAX_ERRORS ) {
-			log.severe(logPrefix + " LogOre logger gave up after "+MAX_ERRORS+" errors");
+			log.severe(" LogOre logger gave up after "+MAX_ERRORS+" errors");
 		}
 		
 		flushLoggers();
@@ -589,7 +587,7 @@ public class LogEventProcessor implements Runnable {
 				logger.logEvent(pe);
 			}
 			catch(Exception e) {
-				log.warning(logPrefix + " error logging event");
+				log.warning(" error logging event");
 				e.printStackTrace();
 			}
 		}
@@ -607,7 +605,7 @@ public class LogEventProcessor implements Runnable {
 				logger.close();
 			}
 			catch(Exception e) {
-				log.warning(logPrefix + " error closing log object");
+				log.warning(" error closing log object");
 				e.printStackTrace();
 			}
 		}

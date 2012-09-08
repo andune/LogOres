@@ -17,7 +17,6 @@ import org.bukkit.configuration.file.FileConfiguration;
  */
 public class LogOresConfig {
 	private final Logger log;
-	private final String logPrefix;
 	private final LogOres plugin;
 	
 	private int logIds[];
@@ -25,7 +24,6 @@ public class LogOresConfig {
 	public LogOresConfig(LogOres plugin) {
 		this.plugin = plugin;
 		this.log = plugin.getLogger();
-		this.logPrefix = plugin.getLogPrefix();
 	}
 	
 	/** Should be called after the config file is loaded, it will do the processing of
@@ -42,13 +40,13 @@ public class LogOresConfig {
 				ids.add(i);
 			}
 			catch(NumberFormatException e) {
-				log.warning(logPrefix + " Invalid number in loggedOres list: "+s);
+				log.warning(" Invalid number in loggedOres list: "+s);
 			}
 		}
 		
 		logIds = new int[ids.size()];
 		if( ids.isEmpty() )
-			log.severe(logPrefix+" No ores defined, logIds is empty");
+			log.severe(" No ores defined, logIds is empty");
 		
 		for(int i=0; i < ids.size(); i++) {
 			logIds[i] = ids.get(i).intValue();

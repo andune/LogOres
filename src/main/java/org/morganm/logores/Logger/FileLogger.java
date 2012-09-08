@@ -21,7 +21,6 @@ import org.morganm.logores.ProcessedEvent;
  */
 public class FileLogger implements EventLogger {
 	private final Logger log;
-	private final String logPrefix;
 
 	private LogOres plugin;
 	
@@ -34,7 +33,6 @@ public class FileLogger implements EventLogger {
 	public FileLogger(LogOres plugin) {
 		this.plugin = plugin;
 		this.log = plugin.getLogger();
-		this.logPrefix = plugin.getLogPrefix();
 	}
 	
 	@Override
@@ -158,7 +156,7 @@ public class FileLogger implements EventLogger {
 		int txtIndex;
 		if( (txtIndex = logFile.indexOf(".txt")) != -1 ) {
 			logFile = logFile.substring(0, txtIndex);
-			log.info(logPrefix + " Changed base logFile path to (dropped .txt): "+logFile);
+			log.info(" Changed base logFile path to (dropped .txt): "+logFile);
 		}
 		
 		// if we're only logging one file for all worlds, then don't add world as part of filename

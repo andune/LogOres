@@ -16,7 +16,6 @@ import org.morganm.logores.ProcessedEvent;
  */
 public class DatabaseLogger implements EventLogger {
 	private final Logger log;
-	private final String logPrefix;
 	
 	private LogOres plugin;
 	private Statement stmt;
@@ -26,7 +25,6 @@ public class DatabaseLogger implements EventLogger {
 	public DatabaseLogger(LogOres plugin) {
 		this.plugin = plugin;
 		this.log = plugin.getLogger();
-		this.logPrefix = plugin.getLogPrefix();
 	}
 	
 	private void connect() {
@@ -40,7 +38,7 @@ public class DatabaseLogger implements EventLogger {
 			conn = DriverManager.getConnection("jdbc:mysql://"+host+"/"+database+"?user="+user+"&password="+password);
 		} catch (SQLException ex) {
         	status = false;
-        	log.info(logPrefix + " Cannot connect to mysql database");
+        	log.info(" Cannot connect to mysql database");
         	ex.printStackTrace();
         }
 
@@ -57,7 +55,7 @@ public class DatabaseLogger implements EventLogger {
             connect();
             if(conn.isValid(20)){
 			try {
-				log.info(logPrefix + " MySQL-Connection established");
+				log.info(" MySQL-Connection established");
 				stmt = conn.createStatement();
 				stmt.execute("CREATE TABLE IF NOT EXISTS `logores_log` (" +
 						"`id` INT unsigned NOT NULL AUTO_INCREMENT" +
@@ -77,7 +75,7 @@ public class DatabaseLogger implements EventLogger {
 						",PRIMARY KEY (`id`)) ENGINE=MyISAM DEFAULT CHARSET=utf8;"
 						);		
 				} catch (SQLException e) {
-					log.severe(logPrefix + " 'CREATE TABLE `logores_log`' failed ");
+					log.severe(" 'CREATE TABLE `logores_log`' failed ");
 					e.printStackTrace();
 					status  = false;
 				} finally {
@@ -93,7 +91,7 @@ public class DatabaseLogger implements EventLogger {
             }
         } catch (Exception ex) {
         	status = false;
-        	log.info(logPrefix + " MySQL Error");
+        	log.info(" MySQL Error");
         	ex.printStackTrace();
         }
 		
@@ -154,7 +152,7 @@ public class DatabaseLogger implements EventLogger {
 			stmt.close();
 			} catch (SQLException e) {
 			// TODO Auto-generated catch block
-				log.info(logPrefix + " MySQL: Insert Failed");
+				log.info(" MySQL: Insert Failed");
 				e.printStackTrace();
 			} finally {
 				    if (stmt != null) {
