@@ -45,6 +45,15 @@ public class LogOres extends JavaPlugin {
 	private int buildNumber = -1;
     private boolean configLoaded = false;
 	
+    
+    @Override
+    public boolean isDatabaseEnabled() {
+        loadConfig();
+        boolean ret = logOresConfig.isDatabaseEnabled(); 
+        getLogger().info("isDatabaseEnabled() ret="+ret);
+        return ret;
+    }
+
     public void loadConfig() {
     	// copy default config.yml into place if it's not there
 		File file = new File(getDataFolder(), "config.yml");
