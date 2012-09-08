@@ -2,3 +2,6 @@ bin
 dist
 lib
 target
+.classpath
+.project
+.settings
