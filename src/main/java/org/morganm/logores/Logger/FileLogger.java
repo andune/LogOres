@@ -141,6 +141,7 @@ public class FileLogger implements EventLogger {
 
 		sb.append("\n");
 		
+		formatter.close();
 		return sb.toString();
 	}
 	/** Called when a logfile doesn't exist and a new one needs to be created. Exists so it

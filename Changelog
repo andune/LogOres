@@ -1,3 +1,7 @@
+v1.0.2 - Nov 14, 2012
+* fixed to be compatible with bleeding Bukkit v1.4.4 builds (thanks Guyag for the fast PR)
+* cleaned up some minor file resource leaks (identified by JDK 1.7 compiler - thanks Java)
+
 v1.0.1 - Jul 28, 2012
 * merged pull request from @Sancta for DB logging fixes (untested by me & presumed to be working, let me know if you find otherwise)
 * converted to maven for build system to make it easier for other devs to build & contribute

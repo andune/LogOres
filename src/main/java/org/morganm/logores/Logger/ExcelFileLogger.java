@@ -54,6 +54,7 @@ public class ExcelFileLogger extends FileLogger implements EventLogger {
 				"time|distance|blocks|ratio|"+
 				"flagged|flagCount|extra info"
 				);
+		writer.close();
 	}
 	
 	protected String getLogFileName(String world) {
@@ -94,6 +95,7 @@ public class ExcelFileLogger extends FileLogger implements EventLogger {
 				(pe.isInCave ? "[cave]" : "") +
 				(pe.isInVariance ? "[in variance]" : "")
 				);
+		formatter.close();
 
 		return sb.toString();
 	}

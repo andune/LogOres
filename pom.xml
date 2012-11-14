@@ -25,6 +25,10 @@
       <id>morganm-repo</id>
       <url>http://morganmc.dyndns.org/nexus/content/groups/public/</url>
     </repository>
+    <repository>
+      <id>repobo-snap</id>
+      <url>http://repo.bukkit.org/content/groups/public</url>
+    </repository>
   </repositories>
 
   <dependencies>
@@ -64,7 +68,7 @@
     <dependency>
       <groupId>org.bukkit</groupId>
       <artifactId>bukkit</artifactId>
-      <version>1.2.5-R4.0</version>
+      <version>1.4.4-R0.1-SNAPSHOT</version>
     </dependency>
   </dependencies>
 
