@@ -10,7 +10,7 @@ import java.util.Date;
 import java.util.Formatter;
 import java.util.Locale;
 
-import org.morganm.logores.LogOresPlugin;
+import org.morganm.logores.LogOres;
 import org.morganm.logores.ProcessedEvent;
 
 /**
@@ -24,7 +24,7 @@ public class ExcelFileLogger extends FileLogger implements EventLogger {
 		"%d|%1.0f|%d|%1.1f|" +		// time, distance, block, ratio
 		"%s|%d|%s\n";				// flagged string, flag count, additional info
 		
-	public ExcelFileLogger(LogOresPlugin plugin) {
+	public ExcelFileLogger(LogOres plugin) {
 		super(plugin);
 	}
 	

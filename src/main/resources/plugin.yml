@@ -1,5 +1,5 @@
 name: ${project.name}
-main: org.morganm.logores.LogOresPlugin
+main: ${groupId}.${project.name}
 url: ${project.url}
 version: ${project.version}
 author: morganm

@@ -46,7 +46,7 @@ public class LogEventProcessor implements Runnable {
 		oppositeFaces.put(BlockFace.SOUTH, BlockFace.NORTH);
 	}
 	
-	private LogOresPlugin plugin;
+	private LogOres plugin;
 	private final LogQueue queue;
 	private final HashMap<String, PrevOre> lastOre;
 	private final HashMap<String, PrevOre> lastDiamond;
@@ -73,7 +73,7 @@ public class LogEventProcessor implements Runnable {
 	private boolean isParanoidDiamonds = false;
 	private List<String> notifyIgnoredWorlds;	
 	
-	public LogEventProcessor(LogOresPlugin plugin) {
+	public LogEventProcessor(LogOres plugin) {
 		this.plugin = plugin;
 		this.queue = plugin.getLogQueue();
 		this.log = plugin.getLogger();

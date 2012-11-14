@@ -12,7 +12,7 @@ import java.util.HashMap;
 import java.util.Locale;
 import java.util.logging.Logger;
 
-import org.morganm.logores.LogOresPlugin;
+import org.morganm.logores.LogOres;
 import org.morganm.logores.ProcessedEvent;
 
 /**
@@ -23,7 +23,7 @@ public class FileLogger implements EventLogger {
 	private final Logger log;
 	private final String logPrefix;
 
-	private LogOresPlugin plugin;
+	private LogOres plugin;
 	
 	protected boolean logFilePerWorld = false;
 	private String logFile;
@@ -31,7 +31,7 @@ public class FileLogger implements EventLogger {
 	private FileWriter writer;
 	private HashMap<String, FileWriter> writerPerWorld;
 	
-	public FileLogger(LogOresPlugin plugin) {
+	public FileLogger(LogOres plugin) {
 		this.plugin = plugin;
 		this.log = plugin.getLogger();
 		this.logPrefix = plugin.getLogPrefix();

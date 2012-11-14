@@ -18,8 +18,8 @@ import org.morganm.logores.util.PermissionSystem;
  * @author morganm
  *
  */
-public class LogOresPlugin extends JavaPlugin {
-	public static final Logger log = Logger.getLogger(LogOresPlugin.class.toString());
+public class LogOres extends JavaPlugin {
+	public static Logger log;
 	
 	// yellow
     private static final String MOD_COLOR = "\u00A7e";
@@ -96,6 +96,7 @@ public class LogOresPlugin extends JavaPlugin {
 	
 	@Override
 	public void onEnable() {
+		log = this.getLogger();
 		boolean loadError = false;
 		jarUtil = new JarUtils(this, getFile(), log, logPrefix);
 		buildNumber = jarUtil.getBuildNumber();
@@ -206,7 +207,4 @@ public class LogOresPlugin extends JavaPlugin {
 		return logPrefix;
 	}
 
-	public Logger getLogger() {
-		return log;
-	}
 }
