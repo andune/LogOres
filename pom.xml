@@ -5,7 +5,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.morganm</groupId>
   <artifactId>LogOres</artifactId>
-  <version>1.0.1</version>
+  <version>1.0.2</version>
   <name>LogOres</name>
   <description>LogOres to log ore breaks and look for cheat patterns</description>
   <url>https://dev.bukkit.org/server-mods/LogOres/</url>
