@@ -8,6 +8,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.logging.Logger;
 
+import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -192,6 +193,10 @@ public class LogOres extends JavaPlugin {
 	 */
 	public void sendMessage(CommandSender target, String message) {
 		target.sendMessage(MOD_COLOR + message);
+	}
+	
+	public void broadcast(String message, String permission) {
+		Bukkit.broadcast(MOD_COLOR + message, permission);
 	}
 	
 //	public Config getLOConfig() { return config; }

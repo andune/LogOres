@@ -495,30 +495,12 @@ public class LogEventProcessor implements Runnable {
 				if( pe.flagCount >= flagsBeforeNotify ) {
 					String msg = FileLogger.getLogString(pe, true);
 					
-					List<Player> notifyPlayers = getNotifyPlayers();
-					for(Player p : notifyPlayers)
-						plugin.sendMessage(p, msg);
+					plugin.broadcast(msg, "logores.notify");
 				}
 			}
 		}		
 	}
 
-	/** Return the list of players to be notified on a flagged event.
-	 * 
-	 * @return
-	 */
-	private List<Player> getNotifyPlayers() {
-		List<Player> players = new ArrayList<Player>();
-		
-		Player[] onlinePlayers = plugin.getServer().getOnlinePlayers();
-		for(int i=0; i < onlinePlayers.length; i++) {
-			if( plugin.hasPermission(onlinePlayers[i], "logores.notify") )
-				players.add(onlinePlayers[i]);
-		}
-		
-		return players;
-	}
-	
 	/** This method will be called repeatedly every few seconds by the Bukkit Scheduler.
 	 * It will read the block queue until empty and then exit.
 	 * 
